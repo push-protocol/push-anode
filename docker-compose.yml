@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: push-anode
+      POSTGRES_USER: push-anode
+      POSTGRES_PASSWORD: tUT2uGTq0SglqkXO
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://push-anode:tUT2uGTq0SglqkXO@postgres:5432/push-anode
+    volumes:
+      - .:/app
+    entrypoint: ["sh", "/app/entrypoint.sh"]
+
+volumes:
+  postgres-data:
