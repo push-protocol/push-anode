@@ -92,7 +92,7 @@ This project is currently a work in progress. Please be aware that things might 
 
    ```
 
-2. **Starting node suing Docker**
+2. **Starting node using Docker**
 
    ```bash
    docker compose up
