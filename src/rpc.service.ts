@@ -1,39 +1,48 @@
 import { Injectable } from "@nestjs/common";
 import { RpcHandler } from "@klerick/nestjs-json-rpc";
-import { BlockService } from "./modules/block/block.service";
-import { TxService } from "./modules/tx/tx.service";
+import { BlockService, PaginatedBlocksResponse } from "./modules/block/block.service";
+import { PaginatedTransactionsResponse, Transaction, TxService } from "./modules/tx/tx.service";
 
 @RpcHandler()
 @Injectable()
 export class RpcService {
   constructor(
     private readonly blockService: BlockService,
-    private readonly txService: TxService
+    private readonly txService: TxService,
   ) {}
 
   async getBlocks(params: {
-    page: number;
-    pageSize: number;
     startTime: string;
-    endTime: string;
-  }) {
-    return this.blockService.getBlocksPaginated(params);
+    direction: string;
+    showDetails: boolean;
+  }): Promise<PaginatedBlocksResponse> {
+    const { startTime, direction, showDetails } = params;
+
+    // Default values
+    const finalDirection = direction || 'DESC';
+    const finalShowDetails = showDetails || false;
+
+    return this.blockService.push_getBlocksByTime([
+      startTime,
+      finalDirection,
+      finalShowDetails,
+    ]);
   }
 
   async getBlockByHash(params: { hash: string }) {
-    return this.blockService.getBlockByHash(params);
+    return this.blockService.push_getBlockByHash([params.hash]);
   }
 
   async getTxs(params: {
-    page: number;
-    pageSize: number;
-    startTime: string;
-    endTime: string;
-  }) {
-    return this.txService.getTxsPaginated(params);
+    category?: string;
+    sortKey: string;
+    direction?: 'asc' | 'desc';
+    showDetails?: boolean;
+  }): Promise<PaginatedTransactionsResponse> {
+    return this.txService.push_getTransactions(params);
   }
 
-  async getTxByHash(params: { hash: string }) {
-    return this.txService.getTxByHash(params);
+  async getTxByHash(params: { hash: string }): Promise<Transaction> {
+    return this.txService.push_getTransactionByHash(params);
   }
 }

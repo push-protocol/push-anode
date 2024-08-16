@@ -1,8 +1,8 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { TxService } from "./tx.service";
-import { PrismaService } from "../../prisma/prisma.service";
+import { Test, TestingModule } from '@nestjs/testing';
+import { TxService } from './tx.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
-describe("TxService", () => {
+describe('TxService', () => {
   let service: TxService;
   let prismaService: PrismaService;
 
@@ -13,9 +13,8 @@ describe("TxService", () => {
         {
           provide: PrismaService,
           useValue: {
-            tx: {
+            transaction: {
               findMany: jest.fn(),
-              count: jest.fn(),
               findUnique: jest.fn(),
             },
           },
@@ -27,77 +26,86 @@ describe("TxService", () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("getTxsPaginated", () => {
-    it("should return paginated transactions", async () => {
+  describe('push_getTransactions', () => {
+    it('should return transactions grouped by block', async () => {
       const mockTransactions = [
         {
-          hash: "hash1",
-          blockHash: "blockHash1",
-          category: "category1",
-          data: {},
-          timestamp: new Date(),
+          ts: new Date(),
+          block_hash: 'blockHash1',
+          category: 'category1',
+          source: 'source1',
+          recipients: { recipient1: 'value1' },
+          data: 'data1',
+          data_as_json: { key: 'value1' },
+          sig: 'sig1',
         },
         {
-          hash: "hash2",
-          blockHash: "blockHash2",
-          category: "category2",
-          data: {},
-          timestamp: new Date(),
+          ts: new Date(),
+          block_hash: 'blockHash1',
+          category: 'category1',
+          source: 'source2',
+          recipients: { recipient2: 'value2' },
+          data: 'data2',
+          data_as_json: { key: 'value2' },
+          sig: 'sig2',
         },
       ];
-      const totalItems = 2;
 
       jest
-        .spyOn(prismaService.tx, "findMany")
+        .spyOn(prismaService.transaction, 'findMany')
         .mockResolvedValue(mockTransactions);
-      jest.spyOn(prismaService.tx, "count").mockResolvedValue(totalItems);
 
       const params = {
-        page: 1,
-        pageSize: 10,
-        startTime: "2024-01-01T00:00:00Z",
-        endTime: "2024-12-31T23:59:59Z",
+        category: 'category1',
+        sortKey: '1722512552.001000',
+        direction: 'desc' as const, // Explicitly typing the direction
+        showDetails: false,
       };
 
-      const result = await service.getTxsPaginated(params);
+      const result = await service.push_getTransactions(params);
 
-      expect(result.items).toEqual(mockTransactions);
-      expect(result.meta.currentPage).toBe(1);
-      expect(result.meta.pageSize).toBe(10);
-      expect(result.meta.totalItems).toBe(totalItems);
-      expect(result.meta.totalPages).toBe(1);
+      expect(result.blocks.length).toBe(1);
+      expect(result.blocks[0].transactions.length).toBe(2);
+      expect(result.lastTs).toBe(mockTransactions[1].ts.getTime().toString());
     });
   });
 
-  describe("getTxByHash", () => {
-    it("should return transaction by hash", async () => {
+  describe('push_getTransactionByHash', () => {
+    it('should return transaction by hash', async () => {
       const mockTransaction = {
-        hash: "hash1",
-        blockHash: "blockHash1",
-        category: "category1",
-        data: {},
-        timestamp: new Date(),
+        ts: new Date(),
+        block_hash: 'blockHash1',
+        category: 'category1',
+        source: 'source1',
+        recipients: { recipient1: 'value1' },
+        data: 'data1',
+        data_as_json: { key: 'value1' },
+        sig: 'sig1',
       };
 
       jest
-        .spyOn(prismaService.tx, "findUnique")
+        .spyOn(prismaService.transaction, 'findUnique')
         .mockResolvedValue(mockTransaction);
 
-      const result = await service.getTxByHash({ hash: "hash1" });
+      const result = await service.push_getTransactionByHash({
+        hash: 'sig1',
+      });
 
       expect(result).toEqual(mockTransaction);
     });
 
-    it("should throw an error if transaction not found", async () => {
-      jest.spyOn(prismaService.tx, "findUnique").mockResolvedValue(null);
+    it('should throw an error if transaction not found', async () => {
+      jest
+        .spyOn(prismaService.transaction, 'findUnique')
+        .mockResolvedValue(null);
 
       await expect(
-        service.getTxByHash({ hash: "nonExistentHash" })
-      ).rejects.toThrow("Transaction not found");
+        service.push_getTransactionByHash({ hash: 'nonExistentHash' }),
+      ).rejects.toThrow('Transaction not found');
     });
   });
 });

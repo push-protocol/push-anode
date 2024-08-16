@@ -8,15 +8,23 @@ datasource db {
 }
 
 model Block {
-  hash       String   @id @default(uuid())
-  metaData   Json
-  timestamp  DateTime @default(now())
+  block_hash String  @id @map("block_hash") @db.Text
+  data       Bytes   @db.ByteA
+  ts         DateTime @default(now()) @map("ts")
+
+  @@index([block_hash], name: "blocks_idx")
 }
 
-model Tx {
-  hash       String   @id @default(uuid())
-  blockHash  String
-  category   String
-  data       Json
-  timestamp  DateTime @default(now())
+model Transaction {
+  ts           DateTime @default(now()) @map("ts")
+  block_hash   String   @db.VarChar(128)
+  category     String   @db.VarChar(32)
+  source       String   @db.VarChar(64)
+  recipients   Json?    @db.JsonB
+  data         String   @db.Text
+  data_as_json Json?    @db.JsonB
+  sig          String   @db.Text
+
+  @@id([sig])
+  @@index([block_hash], name: "transaction_block_hash_idx")
 }

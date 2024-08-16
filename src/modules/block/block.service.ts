@@ -1,77 +1,125 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { PaginatedResponseDto } from "../../common/dto/paginated-response.dto";
-import { BlockDto } from "./dto/block.dto";
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+interface Transaction {
+  ts: Date;
+  block_hash: string;
+  category: string;
+  source: string;
+  recipients: unknown; // Change to appropriate type if known
+  data: string;
+  data_as_json: unknown; // Change to appropriate type if known
+  sig: string;
+}
+
+interface Block {
+  block_hash: string;
+  data: Buffer; // Since data is now Bytes in the schema
+  ts: Date;
+}
+
+interface BlockWithTransactions extends Block {
+  transactions: Transaction[];
+}
+
+export interface PaginatedBlocksResponse {
+  blocks: (Block | BlockWithTransactions)[];
+  lastTs: string;
+}
 
 @Injectable()
 export class BlockService {
   constructor(private prisma: PrismaService) {}
 
-  async getBlocksPaginated(params: {
-    page?: number;
-    pageSize?: number;
-    startTime?: string;
-    endTime?: string;
-  }): Promise<PaginatedResponseDto<BlockDto>> {
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 10;
-    const start = params.startTime
-      ? new Date(params.startTime)
-      : new Date("1970-01-01T00:00:00Z");
-    const end = params.endTime ? new Date(params.endTime) : new Date();
+  async push_getBlocksByTime(
+    params: [string, string, boolean],
+  ): Promise<PaginatedBlocksResponse> {
+    const [startTime, direction, showDetails] = params;
 
-    const skip = (page - 1) * pageSize;
-    const where = {
-      timestamp: {
-        gte: start,
-        lte: end,
+    const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
+
+    const blocks = await this.prisma.block.findMany({
+      where: {
+        ts: { gte: new Date(startTime) }, // Start from the provided timestamp
       },
-    };
-
-    const [blocks, totalItems] = await Promise.all([
-      this.prisma.block.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: {
-          timestamp: "desc",
-        },
-      }),
-      this.prisma.block.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / pageSize);
-
-    const blockDtos: BlockDto[] = blocks.map((block) => ({
-      hash: block.hash,
-      metaData: block.metaData as BlockDto["metaData"], // Cast to your DTO type
-      timestamp: block.timestamp,
-    }));
-
-    return {
-      items: blockDtos,
-      meta: {
-        currentPage: page,
-        pageSize,
-        totalItems,
-        totalPages,
-      },
-    };
-  }
-
-  async getBlockByHash(params: { hash: string }): Promise<BlockDto> {
-    const block = await this.prisma.block.findUnique({
-      where: { hash: params.hash },
+      orderBy: { ts: orderByDirection },
+      take: 10, // Assuming pagination, fetching 10 blocks
     });
 
-    if (!block) {
-      throw new Error("Block not found");
+    const lastTs = blocks.length
+      ? blocks[blocks.length - 1].ts.getTime().toString()
+      : '';
+
+    let responseBlocks: (Block | BlockWithTransactions)[] = blocks.map(
+      (block) => ({
+        block_hash: block.block_hash,
+        data: block.data,
+        ts: block.ts,
+      }),
+    );
+
+    if (showDetails) {
+      responseBlocks = await Promise.all(
+        blocks.map(async (block) => {
+          const transactions = await this.prisma.transaction.findMany({
+            where: { block_hash: block.block_hash },
+          });
+          return {
+            block_hash: block.block_hash,
+            data: block.data,
+            ts: block.ts,
+            transactions: transactions.map((tx) => ({
+              ts: tx.ts,
+              block_hash: tx.block_hash,
+              category: tx.category,
+              source: tx.source,
+              recipients: tx.recipients,
+              data: tx.data,
+              data_as_json: tx.data_as_json,
+              sig: tx.sig,
+            })),
+          } as BlockWithTransactions;
+        }),
+      );
     }
 
     return {
-      hash: block.hash,
-      metaData: block.metaData as BlockDto["metaData"], // Cast to your DTO type
-      timestamp: block.timestamp,
+      blocks: responseBlocks,
+      lastTs,
+    };
+  }
+
+  async push_getBlockByHash(
+    params: [string],
+  ): Promise<BlockWithTransactions | null> {
+    const [blockHash] = params;
+
+    const block = await this.prisma.block.findUnique({
+      where: { block_hash: blockHash },
+    });
+
+    if (!block) {
+      throw new Error('Block not found');
+    }
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: { block_hash: block.block_hash },
+    });
+
+    return {
+      block_hash: block.block_hash,
+      data: block.data,
+      ts: block.ts,
+      transactions: transactions.map((tx) => ({
+        ts: tx.ts,
+        block_hash: tx.block_hash,
+        category: tx.category,
+        source: tx.source,
+        recipients: tx.recipients,
+        data: tx.data,
+        data_as_json: tx.data_as_json,
+        sig: tx.sig,
+      })),
     };
   }
 }

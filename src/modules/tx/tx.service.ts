@@ -1,73 +1,109 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { PaginatedResponseDto } from "../../common/dto/paginated-response.dto";
-import { TxDto } from "./dto/tx.dto";
+import { PrismaService } from '../../prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
+
+export interface Transaction {
+  ts: Date;
+  block_hash: string;
+  category: string;
+  source: string;
+  recipients?: any; // Replace 'any' with the appropriate type if known
+  data: string;
+  data_as_json?: any; // Replace 'any' with the appropriate type if known
+  sig: string;
+}
+
+interface BlockWithTransactions {
+  ts: string;
+  transactions: Transaction[];
+}
+
+export interface PaginatedTransactionsResponse {
+  blocks: BlockWithTransactions[];
+  lastTs: string;
+}
 
 @Injectable()
 export class TxService {
   constructor(private prisma: PrismaService) {}
 
-  async getTxsPaginated(params: {
-    page?: number;
-    pageSize?: number;
-    startTime?: string;
-    endTime?: string;
-  }): Promise<PaginatedResponseDto<TxDto>> {
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 10;
-    const start = params.startTime
-      ? new Date(params.startTime)
-      : new Date("1970-01-01T00:00:00Z");
-    const end = params.endTime ? new Date(params.endTime) : new Date();
+  async push_getTransactions(params: {
+    category?: string;
+    sortKey: string;
+    direction?: 'asc' | 'desc';
+    showDetails?: boolean; // This is now unused but kept for potential future use
+  }): Promise<PaginatedTransactionsResponse> {
+    const { category, sortKey, direction = 'desc' } = params;
 
-    const skip = (page - 1) * pageSize;
     const where = {
-      timestamp: {
-        gte: start,
-        lte: end,
+      ...(category && { category }), // Filter by category if provided
+      ts: {
+        [direction === 'asc' ? 'gte' : 'lte']: new Date(
+          parseFloat(sortKey) * 1000,
+        ), // Convert UNIX timestamp to date
       },
     };
 
-    const [txs, totalItems] = await Promise.all([
-      this.prisma.tx.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: {
-          timestamp: "desc",
-        },
-      }),
-      this.prisma.tx.count({ where }),
-    ]);
+    const transactions = await this.prisma.transaction.findMany({
+      where,
+      orderBy: {
+        ts: direction,
+      },
+    });
 
-    const totalPages = Math.ceil(totalItems / pageSize);
+    const blocks = this.groupTransactionsByBlock(transactions);
+    const lastTs = transactions.length
+      ? transactions[transactions.length - 1].ts.getTime().toString()
+      : sortKey;
 
     return {
-      items: txs,
-      meta: {
-        currentPage: page,
-        pageSize,
-        totalItems,
-        totalPages,
-      },
+      blocks,
+      lastTs,
     };
   }
 
-  async getTxByHash(params: { hash: string }): Promise<TxDto> {
-    const tx = await this.prisma.tx.findUnique({
-      where: { hash: params.hash },
+  private groupTransactionsByBlock(
+    transactions: Transaction[],
+  ): BlockWithTransactions[] {
+    const blocksMap = new Map<string, BlockWithTransactions>();
+
+    transactions.forEach((tx) => {
+      if (!blocksMap.has(tx.block_hash)) {
+        blocksMap.set(tx.block_hash, {
+          ts: tx.ts.getTime().toString(),
+          transactions: [],
+        });
+      }
+      blocksMap.get(tx.block_hash)!.transactions.push(tx);
+    });
+
+    return Array.from(blocksMap.values());
+  }
+  /**
+   * Fetches a transaction based on its hash.
+   *
+   * @param params - The parameters containing the transaction hash.
+   * @returns A transaction object if found, otherwise throws an error.
+   */
+  async push_getTransactionByHash(params: {
+    hash: string;
+  }): Promise<Transaction> {
+    const tx = await this.prisma.transaction.findUnique({
+      where: { sig: params.hash },
     });
 
     if (!tx) {
-      throw new Error("Transaction not found");
+      throw new Error('Transaction not found');
     }
 
     return {
-      hash: tx.hash,
-      blockHash: tx.blockHash,
+      ts: tx.ts,
+      block_hash: tx.block_hash,
       category: tx.category,
-      data: tx.data as TxDto["data"],
-      timestamp: tx.timestamp,
+      source: tx.source,
+      recipients: tx.recipients,
+      data: tx.data,
+      data_as_json: tx.data_as_json,
+      sig: tx.sig,
     };
   }
 }

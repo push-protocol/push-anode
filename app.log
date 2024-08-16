@@ -20,3 +20,25 @@
 {"level":"info","message":"JsonRpcController {/rpc}:","timestamp":"2024-08-13T10:43:03.418Z"}
 {"level":"info","message":"Mapped {/rpc, POST} route","timestamp":"2024-08-13T10:43:03.420Z"}
 {"level":"info","message":"Nest application successfully started","timestamp":"2024-08-13T10:43:03.470Z"}
+{"level":"info","message":"Starting Nest application...","timestamp":"2024-08-14T15:25:06.010Z"}
+{"level":"info","message":"NestjsJsonRpcModule dependencies initialized","timestamp":"2024-08-14T15:25:06.437Z"}
+{"level":"info","message":"BlockModule dependencies initialized","timestamp":"2024-08-14T15:25:06.448Z"}
+{"level":"info","message":"TxModule dependencies initialized","timestamp":"2024-08-14T15:25:06.448Z"}
+{"level":"info","message":"RouterModule dependencies initialized","timestamp":"2024-08-14T15:25:06.448Z"}
+{"level":"info","message":"UtilModule dependencies initialized","timestamp":"2024-08-14T15:25:06.449Z"}
+{"level":"info","message":"AppModule dependencies initialized","timestamp":"2024-08-14T15:25:06.449Z"}
+{"level":"info","message":"HttpTransportModule dependencies initialized","timestamp":"2024-08-14T15:25:06.449Z"}
+{"level":"info","message":"JsonRpcController {/rpc}:","timestamp":"2024-08-14T15:25:06.465Z"}
+{"level":"info","message":"Mapped {/rpc, POST} route","timestamp":"2024-08-14T15:25:06.468Z"}
+{"level":"info","message":"Nest application successfully started","timestamp":"2024-08-14T15:25:06.584Z"}
+{"level":"info","message":"Starting Nest application...","timestamp":"2024-08-14T15:26:46.179Z"}
+{"level":"info","message":"NestjsJsonRpcModule dependencies initialized","timestamp":"2024-08-14T15:26:46.814Z"}
+{"level":"info","message":"BlockModule dependencies initialized","timestamp":"2024-08-14T15:26:46.825Z"}
+{"level":"info","message":"TxModule dependencies initialized","timestamp":"2024-08-14T15:26:46.826Z"}
+{"level":"info","message":"RouterModule dependencies initialized","timestamp":"2024-08-14T15:26:46.827Z"}
+{"level":"info","message":"UtilModule dependencies initialized","timestamp":"2024-08-14T15:26:46.827Z"}
+{"level":"info","message":"AppModule dependencies initialized","timestamp":"2024-08-14T15:26:46.828Z"}
+{"level":"info","message":"HttpTransportModule dependencies initialized","timestamp":"2024-08-14T15:26:46.828Z"}
+{"level":"info","message":"JsonRpcController {/rpc}:","timestamp":"2024-08-14T15:26:46.840Z"}
+{"level":"info","message":"Mapped {/rpc, POST} route","timestamp":"2024-08-14T15:26:46.842Z"}
+{"level":"info","message":"Nest application successfully started","timestamp":"2024-08-14T15:26:46.961Z"}
