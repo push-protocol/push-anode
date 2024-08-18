@@ -6,17 +6,18 @@ async function main() {
   for (let i = 1; i <= 10; i++) {
     const blockHash = `block_hash_${i}`;
 
-    // Insert block
+    // Insert block with Unix epoch time for ts
     await prisma.block.create({
       data: {
         block_hash: blockHash,
         data: Buffer.from(`Object data for block ${i}`), // Converting string to Bytes
+        ts: Math.floor(Date.now() / 1000), // Convert current date to Unix epoch time
       },
     });
 
     // Insert 20 transactions for each block
     const transactions = Array.from({ length: 20 }, (_, j) => ({
-      ts: new Date(),
+      ts: Math.floor(Date.now() / 1000), // Convert current date to Unix epoch time
       block_hash: blockHash,
       category: `category_${i}_${j + 1}`,
       source: `source_${i}_${j + 1}`,

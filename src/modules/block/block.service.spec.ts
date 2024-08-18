@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BlockService } from './block.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client'; // Import Prisma for JsonValue type
 
 describe('BlockService', () => {
   let service: BlockService;
@@ -36,17 +37,17 @@ describe('BlockService', () => {
   describe('push_getBlocksByTime', () => {
     it('should return paginated blocks with transactions when showDetails is true', async () => {
       const mockBlocks = [
-        { block_hash: 'hash1', data: Buffer.from('data1'), ts: new Date() },
+        { block_hash: 'hash1', data: Buffer.from('data1'), ts: Math.floor(Date.now() / 1000) }, // ts as number
       ];
       const mockTransactions = [
         {
-          ts: new Date(),
+          ts: Math.floor(Date.now() / 1000), // ts as number
           block_hash: 'hash1',
           category: 'category1',
           source: 'source1',
-          recipients: [],
+          recipients: {} as Prisma.JsonValue, // Correct type for JSON fields
           data: 'data1',
-          data_as_json: {},
+          data_as_json: {} as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
         },
       ];
@@ -56,8 +57,9 @@ describe('BlockService', () => {
         .spyOn(prismaService.transaction, 'findMany')
         .mockResolvedValue(mockTransactions);
 
-      const params: [string, string, boolean] = [
-        new Date().toISOString(),
+      const startTimeEpoch = Math.floor(Date.now() / 1000); // Generate current epoch time as number
+      const params: [number, string, boolean] = [
+        startTimeEpoch, // Pass epoch time as a number
         'DESC',
         true,
       ];
@@ -73,22 +75,23 @@ describe('BlockService', () => {
     });
   });
 
+
   describe('push_getBlockByHash', () => {
     it('should return block with transactions by hash', async () => {
       const mockBlock = {
         block_hash: 'hash1',
         data: Buffer.from('data1'),
-        ts: new Date(),
+        ts: Math.floor(Date.now() / 1000), // ts as number
       };
       const mockTransactions = [
         {
-          ts: new Date(),
+          ts: Math.floor(Date.now() / 1000), // ts as number
           block_hash: 'hash1',
           category: 'category1',
           source: 'source1',
-          recipients: [],
+          recipients: {} as Prisma.JsonValue, // Correct type for JSON fields
           data: 'data1',
-          data_as_json: {},
+          data_as_json: {} as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
         },
       ];

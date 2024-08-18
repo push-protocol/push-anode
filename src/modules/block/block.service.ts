@@ -3,40 +3,43 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Block } from './dto/block.dto';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
+import { Transaction } from '../tx/dto/transaction.dto';
+
 @Injectable()
 export class BlockService {
   constructor(private prisma: PrismaService) {}
 
   async push_getBlocksByTime(
-    params: [string, string, boolean],
+    params: [number, string, boolean], // startTime is now a number (epoch)
   ): Promise<PaginatedBlocksResponse> {
-    const [startTime, direction, showDetails] = params;
+    const [startTimeEpoch, direction, showDetails] = params;
 
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
     const blocks = await this.prisma.block.findMany({
       where: {
-        ts: { gte: new Date(startTime) }, // Start from the provided timestamp
+        ts: { gte: startTimeEpoch as number }, // Ensure startTimeEpoch is an integer
       },
       orderBy: { ts: orderByDirection },
       take: 10, // Assuming pagination, fetching 10 blocks
     });
 
     const lastTs = blocks.length
-      ? blocks[blocks.length - 1].ts.getTime().toString()
-      : '';
+      ? blocks[blocks.length - 1].ts
+      : 0;
 
-    let responseBlocks: (Block | BlockWithTransactions)[] = blocks.map(
-      (block: any) => ({
+    let responseBlocks: BlockWithTransactions[] = blocks.map(
+      (block: Block) => ({
         block_hash: block.block_hash,
         data: block.data,
         ts: block.ts,
+        transactions: [],
       }),
     );
 
     if (showDetails) {
       responseBlocks = await Promise.all(
-        blocks.map(async (block: any) => {
+        blocks.map(async (block: Block): Promise<BlockWithTransactions> => {
           const transactions = await this.prisma.transaction.findMany({
             where: { block_hash: block.block_hash },
           });
@@ -44,7 +47,7 @@ export class BlockService {
             block_hash: block.block_hash,
             data: block.data,
             ts: block.ts,
-            transactions: transactions.map((tx: any) => ({
+            transactions: transactions.map((tx: Transaction) => ({
               ts: tx.ts,
               block_hash: tx.block_hash,
               category: tx.category,
@@ -54,7 +57,7 @@ export class BlockService {
               data_as_json: tx.data_as_json,
               sig: tx.sig,
             })),
-          } as BlockWithTransactions;
+          };
         }),
       );
     }
@@ -64,6 +67,7 @@ export class BlockService {
       lastTs,
     };
   }
+
 
   async push_getBlockByHash(
     params: [string],
@@ -86,7 +90,7 @@ export class BlockService {
       block_hash: block.block_hash,
       data: block.data,
       ts: block.ts,
-      transactions: transactions.map((tx: any) => ({
+      transactions: transactions.map((tx: Transaction) => ({
         ts: tx.ts,
         block_hash: tx.block_hash,
         category: tx.category,

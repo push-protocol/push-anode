@@ -10,13 +10,13 @@ datasource db {
 model Block {
   block_hash String  @id @map("block_hash") @db.Text
   data       Bytes   @db.ByteA
-  ts         DateTime @default(now()) @map("ts")
+  ts         Int    @default(0) @map("ts")
 
   @@index([block_hash], name: "blocks_idx")
 }
 
 model Transaction {
-  ts           DateTime @default(now()) @map("ts")
+  ts           Int    @default(0) @map("ts")
   block_hash   String   @db.VarChar(128)
   category     String   @db.VarChar(32)
   source       String   @db.VarChar(64)

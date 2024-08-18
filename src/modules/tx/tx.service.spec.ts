@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TxService } from './tx.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client'; // Import Prisma for JsonValue type
 
 describe('TxService', () => {
   let service: TxService;
@@ -34,23 +35,23 @@ describe('TxService', () => {
     it('should return transactions grouped by block', async () => {
       const mockTransactions = [
         {
-          ts: new Date(),
+          ts: Math.floor(Date.now() / 1000), // ts as number (Unix timestamp)
           block_hash: 'blockHash1',
           category: 'category1',
           source: 'source1',
-          recipients: { recipient1: 'value1' },
+          recipients: { recipient1: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
           data: 'data1',
-          data_as_json: { key: 'value1' },
+          data_as_json: { key: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
         },
         {
-          ts: new Date(),
+          ts: Math.floor(Date.now() / 1000), // ts as number (Unix timestamp)
           block_hash: 'blockHash1',
           category: 'category1',
           source: 'source2',
-          recipients: { recipient2: 'value2' },
+          recipients: { recipient2: 'value2' } as Prisma.JsonValue, // Correct type for JSON fields
           data: 'data2',
-          data_as_json: { key: 'value2' },
+          data_as_json: { key: 'value2' } as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig2',
         },
       ];
@@ -70,20 +71,20 @@ describe('TxService', () => {
 
       expect(result.blocks.length).toBe(1);
       expect(result.blocks[0].transactions.length).toBe(2);
-      expect(result.lastTs).toBe(mockTransactions[1].ts.getTime().toString());
+      expect(result.lastTs).toBe(mockTransactions[1].ts.toString());
     });
   });
 
   describe('push_getTransactionByHash', () => {
     it('should return transaction by hash', async () => {
       const mockTransaction = {
-        ts: new Date(),
+        ts: Math.floor(Date.now() / 1000), // ts as number (Unix timestamp)
         block_hash: 'blockHash1',
         category: 'category1',
         source: 'source1',
-        recipients: { recipient1: 'value1' },
+        recipients: { recipient1: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
         data: 'data1',
-        data_as_json: { key: 'value1' },
+        data_as_json: { key: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
         sig: 'sig1',
       };
 

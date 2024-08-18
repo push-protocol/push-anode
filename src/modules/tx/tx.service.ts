@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { BlockWithTransactions } from '../block/dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from '../block/dto/paginated.blocks.response.dto';
 import { Transaction } from './dto/transaction.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TxService {
@@ -32,10 +33,10 @@ export class TxService {
       },
     });
 
-    const blocks = this.groupTransactionsByBlock(transactions);
+    const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
-      ? transactions[transactions.length - 1].ts.getTime().toString()
-      : sortKey;
+      ? transactions[transactions.length - 1].ts
+      : 0;
 
     return {
       blocks,
@@ -43,49 +44,67 @@ export class TxService {
     };
   }
 
-  private groupTransactionsByBlock(
-    transactions: Transaction[],
-  ): BlockWithTransactions[] {
-    const blocksMap = new Map<string, BlockWithTransactions>();
+private async groupTransactionsByBlock(
+  transactions: Transaction[],
+): Promise<BlockWithTransactions[]> {
+  const blocksMap = new Map<string, BlockWithTransactions>();
 
-    transactions.forEach((tx) => {
-      if (!blocksMap.has(tx.block_hash)) {
+  for (const tx of transactions) {
+    // Check if the block is already in the map
+    if (!blocksMap.has(tx.block_hash)) {
+      // Fetch the block data associated with the block_hash only if it hasn't been fetched already
+      const block = await this.prisma.block.findUnique({
+        where: { block_hash: tx.block_hash },
+      });
+
+      // Ensure block exists before proceeding
+      if (block) {
         blocksMap.set(tx.block_hash, {
-          ts: tx.ts.getTime().toString(),
+          block_hash: block.block_hash,  
+          data: block.data, // Use block data instead of transaction data              
+          ts: block.ts,
           transactions: [],
         });
       }
-      blocksMap.get(tx.block_hash)!.transactions.push(tx);
-    });
+    }
 
-    return Array.from(blocksMap.values());
+    // If the block exists in the map, add the transaction to the block's transactions list
+    const blockWithTransactions = blocksMap.get(tx.block_hash);
+    if (blockWithTransactions) {
+      blockWithTransactions.transactions.push(tx);
+    }
   }
+
+  return Array.from(blocksMap.values());
+}
+
+
   /**
    * Fetches a transaction based on its hash.
    *
    * @param params - The parameters containing the transaction hash.
    * @returns A transaction object if found, otherwise throws an error.
    */
-  async push_getTransactionByHash(params: {
-    hash: string;
-  }): Promise<Transaction> {
-    const tx = await this.prisma.transaction.findUnique({
-      where: { sig: params.hash },
-    });
+async push_getTransactionByHash(params: {
+  hash: string;
+}): Promise<Transaction> {
+  const tx = await this.prisma.transaction.findUnique({
+    where: { sig: params.hash },
+  });
 
-    if (!tx) {
-      throw new Error('Transaction not found');
-    }
-
-    return {
-      ts: tx.ts,
-      block_hash: tx.block_hash,
-      category: tx.category,
-      source: tx.source,
-      recipients: tx.recipients,
-      data: tx.data,
-      data_as_json: tx.data_as_json,
-      sig: tx.sig,
-    };
+  if (!tx) {
+    throw new Error('Transaction not found');
   }
+
+  return {
+    ts: tx.ts,
+    block_hash: tx.block_hash,
+    category: tx.category,
+    source: tx.source,
+    recipients: tx.recipients ?? {} as Prisma.JsonValue, // Ensure recipients is always defined
+    data: tx.data,
+    data_as_json: tx.data_as_json ?? {} as Prisma.JsonValue, // Ensure data_as_json is always defined
+    sig: tx.sig,
+  };
+}
 }

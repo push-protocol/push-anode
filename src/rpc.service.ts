@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { RpcHandler } from "@klerick/nestjs-json-rpc";
-import { BlockService, PaginatedBlocksResponse } from "./modules/block/block.service";
-import { PaginatedTransactionsResponse, Transaction, TxService } from "./modules/tx/tx.service";
+import { BlockService } from "./modules/block/block.service";
+import { PaginatedBlocksResponse } from "./modules/block/dto/paginated.blocks.response.dto";
+import { TxService } from "./modules/tx/tx.service";
+import { Transaction } from "./modules/tx/dto/transaction.dto";
 
 @RpcHandler()
 @Injectable()
@@ -21,9 +23,9 @@ export class RpcService {
     // Default values
     const finalDirection = direction || 'DESC';
     const finalShowDetails = showDetails || false;
-
+     const startTimeEpoch = Math.floor(new Date(startTime).getTime() / 1000);
     return this.blockService.push_getBlocksByTime([
-      startTime,
+      startTimeEpoch,
       finalDirection,
       finalShowDetails,
     ]);
@@ -38,7 +40,7 @@ export class RpcService {
     sortKey: string;
     direction?: 'asc' | 'desc';
     showDetails?: boolean;
-  }): Promise<PaginatedTransactionsResponse> {
+  }): Promise<PaginatedBlocksResponse> {
     return this.txService.push_getTransactions(params);
   }
 
