@@ -1,5 +1,2 @@
 1. search by address
 2. count API - total transactions, total blocks, daily transactions start of the day 
-3. Blocks API
-4. Transactions API
-5. return total blocks in the above API, inlcude page size  

@@ -2,50 +2,79 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { BlockWithTransactions } from '../block/dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from '../block/dto/paginated.blocks.response.dto';
-import { Transaction } from './dto/transaction.dto';
+import { TransactionDTO } from './dto/transaction.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TxService {
   constructor(private prisma: PrismaService) {}
 
-  async push_getTransactions(params: {
-    category?: string;
-    sortKey: string;
-    direction?: 'asc' | 'desc';
-    showDetails?: boolean; // This is now unused but kept for potential future use
-  }): Promise<PaginatedBlocksResponse> {
-    const { category, sortKey, direction = 'desc' } = params;
+async push_getTransactions(params: {
+  category?: string;
+  sortKey: string;
+  direction?: 'asc' | 'desc';
+  showDetails?: boolean; // This is now unused but kept for potential future use
+  pageSize?: number; // New parameter for page size
+}): Promise<PaginatedBlocksResponse> {
+  const { category, sortKey, direction = 'desc', pageSize = 10 } = params;
 
-    const where = {
-      ...(category && { category }), // Filter by category if provided
-      ts: {
-        [direction === 'asc' ? 'gte' : 'lte']: new Date(
-          parseFloat(sortKey) * 1000,
-        ), // Convert UNIX timestamp to date
-      },
-    };
+  const where = {
+    ...(category && { category }), // Filter by category if provided
+    ts: {
+      [direction === 'asc' ? 'gte' : 'lte']: parseFloat(sortKey), // Use UNIX timestamp as is
+    },
+  };
 
-    const transactions = await this.prisma.transaction.findMany({
-      where,
-      orderBy: {
-        ts: direction,
-      },
-    });
+  // Calculate the total count of transactions
+  const totalTransactions = await this.prisma.transaction.count({
+    where,
+  });
 
-    const blocks = await this.groupTransactionsByBlock(transactions);
-    const lastTs = transactions.length
-      ? transactions[transactions.length - 1].ts
-      : 0;
+  // Calculate total pages
+  const totalPages = Math.ceil(totalTransactions / pageSize);
 
-    return {
-      blocks,
-      lastTs,
-    };
+  const transactions = await this.prisma.transaction.findMany({
+    where,
+    orderBy: {
+      ts: direction,
+    },
+    take: pageSize, // Apply the page size
+  });
+
+  const blocks = await this.groupTransactionsByBlock(transactions);
+  const lastTs = transactions.length
+    ? transactions[transactions.length - 1].ts
+    : 0;
+
+  return {
+    blocks,
+    lastTs,
+    totalPages, // Include total pages in the response
+  };
+}
+
+  // Total transactions count
+  async getTotalTransactions(): Promise<number> {
+    return this.prisma.transaction.count();
   }
 
+  // Daily transactions count (from the start of the day)
+  async getDailyTransactions(): Promise<number> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0); // Start of the day
+
+    return this.prisma.transaction.count({
+      where: {
+        ts: {
+          gte: Math.floor(todayStart.getTime() / 1000), // Using epoch time for comparison
+        },
+      },
+    });
+  }
+
+
 private async groupTransactionsByBlock(
-  transactions: Transaction[],
+  transactions: TransactionDTO[],
 ): Promise<BlockWithTransactions[]> {
   const blocksMap = new Map<string, BlockWithTransactions>();
 
@@ -61,7 +90,6 @@ private async groupTransactionsByBlock(
       if (block) {
         blocksMap.set(tx.block_hash, {
           block_hash: block.block_hash,  
-          data: block.data, // Use block data instead of transaction data              
           ts: block.ts,
           transactions: [],
         });
@@ -87,7 +115,7 @@ private async groupTransactionsByBlock(
    */
 async push_getTransactionByHash(params: {
   hash: string;
-}): Promise<Transaction> {
+}): Promise<TransactionDTO> {
   const tx = await this.prisma.transaction.findUnique({
     where: { sig: params.hash },
   });

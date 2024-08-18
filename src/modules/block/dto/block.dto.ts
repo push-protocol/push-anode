@@ -1,5 +1,4 @@
-export interface Block {
+export interface BlockDTO {
   block_hash: string;
-  data: Buffer;
   ts: number;
 }

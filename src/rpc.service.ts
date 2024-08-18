@@ -3,7 +3,7 @@ import { RpcHandler } from "@klerick/nestjs-json-rpc";
 import { BlockService } from "./modules/block/block.service";
 import { PaginatedBlocksResponse } from "./modules/block/dto/paginated.blocks.response.dto";
 import { TxService } from "./modules/tx/tx.service";
-import { Transaction } from "./modules/tx/dto/transaction.dto";
+import { TransactionDTO } from "./modules/tx/dto/transaction.dto";
 
 @RpcHandler()
 @Injectable()
@@ -13,26 +13,24 @@ export class RpcService {
     private readonly txService: TxService,
   ) {}
 
-  async getBlocks(params: {
-    startTime: string;
-    direction: string;
-    showDetails: boolean;
-  }): Promise<PaginatedBlocksResponse> {
-    const { startTime, direction, showDetails } = params;
+  async getBlocks(
+    startTime: number,
+    direction: string,
+    showDetails: boolean
+  ): Promise<PaginatedBlocksResponse> {
 
     // Default values
     const finalDirection = direction || 'DESC';
     const finalShowDetails = showDetails || false;
-     const startTimeEpoch = Math.floor(new Date(startTime).getTime() / 1000);
     return this.blockService.push_getBlocksByTime([
-      startTimeEpoch,
+      startTime,
       finalDirection,
       finalShowDetails,
     ]);
   }
 
-  async getBlockByHash(params: { hash: string }) {
-    return this.blockService.push_getBlockByHash([params.hash]);
+  async getBlockByHash( hash: string ) {
+    return this.blockService.push_getBlockByHash([hash]);
   }
 
   async getTxs(params: {
@@ -44,7 +42,24 @@ export class RpcService {
     return this.txService.push_getTransactions(params);
   }
 
-  async getTxByHash(params: { hash: string }): Promise<Transaction> {
+  async getTxByHash(params: { hash: string }): Promise<TransactionDTO> {
     return this.txService.push_getTransactionByHash(params);
+  }
+    async getCounts(): Promise<{
+    totalBlocks: number;
+    totalTransactions: number;
+    dailyTransactions: number;
+  }> {
+    const [totalBlocks, totalTransactions, dailyTransactions] = await Promise.all([
+      this.blockService.getTotalBlocks(),
+      this.txService.getTotalTransactions(),
+      this.txService.getDailyTransactions(),
+    ]);
+
+    return {
+      totalBlocks,
+      totalTransactions,
+      dailyTransactions,
+    };
   }
 }

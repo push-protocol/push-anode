@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 
-export interface Transaction {
+export interface TransactionDTO {
   ts: number;
   block_hash: string;
   category: string;
