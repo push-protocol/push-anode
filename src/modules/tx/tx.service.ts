@@ -1,26 +1,8 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-
-export interface Transaction {
-  ts: Date;
-  block_hash: string;
-  category: string;
-  source: string;
-  recipients?: any; // Replace 'any' with the appropriate type if known
-  data: string;
-  data_as_json?: any; // Replace 'any' with the appropriate type if known
-  sig: string;
-}
-
-interface BlockWithTransactions {
-  ts: string;
-  transactions: Transaction[];
-}
-
-export interface PaginatedTransactionsResponse {
-  blocks: BlockWithTransactions[];
-  lastTs: string;
-}
+import { BlockWithTransactions } from '../block/dto/block.transactions.dto';
+import { PaginatedBlocksResponse } from '../block/dto/paginated.blocks.response.dto';
+import { Transaction } from './dto/transaction.dto';
 
 @Injectable()
 export class TxService {
@@ -31,7 +13,7 @@ export class TxService {
     sortKey: string;
     direction?: 'asc' | 'desc';
     showDetails?: boolean; // This is now unused but kept for potential future use
-  }): Promise<PaginatedTransactionsResponse> {
+  }): Promise<PaginatedBlocksResponse> {
     const { category, sortKey, direction = 'desc' } = params;
 
     const where = {

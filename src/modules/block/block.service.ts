@@ -1,32 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-
-interface Transaction {
-  ts: Date;
-  block_hash: string;
-  category: string;
-  source: string;
-  recipients: unknown; // Change to appropriate type if known
-  data: string;
-  data_as_json: unknown; // Change to appropriate type if known
-  sig: string;
-}
-
-interface Block {
-  block_hash: string;
-  data: Buffer; // Since data is now Bytes in the schema
-  ts: Date;
-}
-
-interface BlockWithTransactions extends Block {
-  transactions: Transaction[];
-}
-
-export interface PaginatedBlocksResponse {
-  blocks: (Block | BlockWithTransactions)[];
-  lastTs: string;
-}
-
+import { Block } from './dto/block.dto';
+import { BlockWithTransactions } from './dto/block.transactions.dto';
+import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 @Injectable()
 export class BlockService {
   constructor(private prisma: PrismaService) {}
@@ -51,7 +27,7 @@ export class BlockService {
       : '';
 
     let responseBlocks: (Block | BlockWithTransactions)[] = blocks.map(
-      (block) => ({
+      (block: any) => ({
         block_hash: block.block_hash,
         data: block.data,
         ts: block.ts,
@@ -60,7 +36,7 @@ export class BlockService {
 
     if (showDetails) {
       responseBlocks = await Promise.all(
-        blocks.map(async (block) => {
+        blocks.map(async (block: any) => {
           const transactions = await this.prisma.transaction.findMany({
             where: { block_hash: block.block_hash },
           });
@@ -68,7 +44,7 @@ export class BlockService {
             block_hash: block.block_hash,
             data: block.data,
             ts: block.ts,
-            transactions: transactions.map((tx) => ({
+            transactions: transactions.map((tx: any) => ({
               ts: tx.ts,
               block_hash: tx.block_hash,
               category: tx.category,
@@ -110,7 +86,7 @@ export class BlockService {
       block_hash: block.block_hash,
       data: block.data,
       ts: block.ts,
-      transactions: transactions.map((tx) => ({
+      transactions: transactions.map((tx: any) => ({
         ts: tx.ts,
         block_hash: tx.block_hash,
         category: tx.category,
