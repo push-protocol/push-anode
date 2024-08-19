@@ -1,14 +1,14 @@
-import { Injectable, LoggerService } from "@nestjs/common";
-import { createLogger, format, transports } from "winston";
+import { Injectable, LoggerService } from '@nestjs/common';
+import { createLogger, format, transports } from 'winston';
 
 @Injectable()
 export class WinstonLoggerService implements LoggerService {
   private logger = createLogger({
-    level: "info",
+    level: 'info',
     format: format.combine(format.timestamp(), format.json()),
     transports: [
       new transports.Console(),
-      new transports.File({ filename: "app.log" }),
+      new transports.File({ filename: 'app.log' }),
     ],
   });
 

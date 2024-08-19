@@ -1,2 +1,4 @@
 1. search by address
-2. count API - total transactions, total blocks, daily transactions start of the day 
+2. Test transactions API
+3. Mocks discussion
+4. recipients seed data correction

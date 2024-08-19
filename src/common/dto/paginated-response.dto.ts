@@ -1,16 +1,16 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { PaginationMeta } from "./pagination-meta.dto";
+import { ApiProperty } from '@nestjs/swagger';
+import { PaginationMeta } from './pagination-meta.dto';
 
 export class PaginatedResponseDto<T> {
   @ApiProperty({
     isArray: true,
-    description: "List of items for the current page",
+    description: 'List of items for the current page',
   })
   items: T[];
 
   @ApiProperty({
     type: PaginationMeta,
-    description: "Pagination metadata",
+    description: 'Pagination metadata',
   })
   meta: PaginationMeta;
 

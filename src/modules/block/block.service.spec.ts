@@ -37,7 +37,11 @@ describe('BlockService', () => {
   describe('push_getBlocksByTime', () => {
     it('should return paginated blocks with transactions when showDetails is true', async () => {
       const mockBlocks = [
-        { block_hash: 'hash1', data: Buffer.from('data1'), ts: Math.floor(Date.now() / 1000) }, // ts as number
+        {
+          block_hash: 'hash1',
+          data: Buffer.from('data1'),
+          ts: Math.floor(Date.now() / 1000),
+        }, // ts as number
       ];
       const mockTransactions = [
         {
@@ -74,7 +78,6 @@ describe('BlockService', () => {
       }
     });
   });
-
 
   describe('push_getBlockByHash', () => {
     it('should return block with transactions by hash', async () => {

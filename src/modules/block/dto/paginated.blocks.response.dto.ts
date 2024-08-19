@@ -1,7 +1,7 @@
-import { BlockWithTransactions } from "./block.transactions.dto";
+import { BlockWithTransactions } from './block.transactions.dto';
 
 export interface PaginatedBlocksResponse {
-  blocks:  BlockWithTransactions[];
+  blocks: BlockWithTransactions[];
   lastTs: number;
   totalPages: number;
 }
