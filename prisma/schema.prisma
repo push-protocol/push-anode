@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Block {
-  block_hash String  @id @map("block_hash") @db.Text
-  data       Bytes   @db.ByteA
+  block_hash String @id @map("block_hash") @db.Text
+  data       Bytes  @db.ByteA
   ts         Int    @default(0) @map("ts")
 
   @@index([block_hash], name: "blocks_idx")
@@ -17,14 +17,15 @@ model Block {
 
 model Transaction {
   ts           Int    @default(0) @map("ts")
-  block_hash   String   @db.VarChar(128)
-  category     String   @db.VarChar(32)
-  source       String   @db.VarChar(64)
-  recipients   Json?    @db.JsonB
-  data         String   @db.Text
-  data_as_json Json?    @db.JsonB
-  sig          String   @db.Text
+  txn_hash     String @db.VarChar(128)
+  block_hash   String @db.VarChar(128)
+  category     String @db.VarChar(32)
+  source       String @db.VarChar(64)
+  recipients   Json?  @db.JsonB
+  data         Bytes  @db.ByteA
+  data_as_json Json?  @db.JsonB
+  sig          String @db.Text
 
-  @@id([sig])
+  @@id([txn_hash])
   @@index([block_hash], name: "transaction_block_hash_idx")
 }

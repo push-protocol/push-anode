@@ -115,7 +115,7 @@ export class TxService {
     hash: string;
   }): Promise<TransactionDTO> {
     const tx = await this.prisma.transaction.findUnique({
-      where: { sig: params.hash },
+      where: { txn_hash: params.hash },
     });
 
     if (!tx) {
@@ -123,12 +123,12 @@ export class TxService {
     }
 
     return {
+      txn_hash: tx.txn_hash,
       ts: tx.ts,
       block_hash: tx.block_hash,
       category: tx.category,
       source: tx.source,
       recipients: tx.recipients ?? ({} as Prisma.JsonValue), // Ensure recipients is always defined
-      data: tx.data,
       data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue), // Ensure data_as_json is always defined
       sig: tx.sig,
     };

@@ -46,11 +46,12 @@ describe('BlockService', () => {
       const mockTransactions = [
         {
           ts: Math.floor(Date.now() / 1000), // ts as number
+          txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
           source: 'source1',
           recipients: {} as Prisma.JsonValue, // Correct type for JSON fields
-          data: 'data1',
+          data: Buffer.from('data1'),
           data_as_json: {} as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
         },
@@ -89,11 +90,12 @@ describe('BlockService', () => {
       const mockTransactions = [
         {
           ts: Math.floor(Date.now() / 1000), // ts as number
+          txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
           source: 'source1',
           recipients: {} as Prisma.JsonValue, // Correct type for JSON fields
-          data: 'data1',
+          data: Buffer.from('data1'),
           data_as_json: {} as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
         },

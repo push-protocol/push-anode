@@ -1,10 +1,34 @@
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+// Function to generate a random hash
+function generateRandomHash() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+// Function to get a random category
+function getRandomCategory() {
+  const categories = ['EMAIL', 'NOTIFICATION', 'INIT'];
+  return categories[Math.floor(Math.random() * categories.length)];
+}
+
+function getRandomSource() {
+  const sources = ['ETH_MAINNET', 'POLYGON_MAINNET', 'BSC_MAINNET'];
+  return sources[Math.floor(Math.random() * sources.length)];
+}
+
+
+// Function to generate a random Ethereum address in the format 'eip155:<address>'
+function generateRandomEthAddress() {
+  const ethAddress = '0x' + crypto.randomBytes(20).toString('hex');
+  return `eip155:${ethAddress}`;
+}
+
 async function main() {
   for (let i = 1; i <= 10; i++) {
-    const blockHash = `block_hash_${i}`;
+    const blockHash = generateRandomHash(); // Generate random block hash
 
     // Insert block with Unix epoch time for ts
     await prisma.block.create({
@@ -16,21 +40,24 @@ async function main() {
     });
 
     // Insert 20 transactions for each block
-    const transactions = Array.from({ length: 20 }, (_, j) => ({
+    const transactions = Array.from({ length: 20 }, () => ({
       ts: Math.floor(Date.now() / 1000), // Convert current date to Unix epoch time
+      txn_hash: generateRandomHash(), // Generate random transaction hash
       block_hash: blockHash,
-      category: `category_${i}_${j + 1}`,
-      source: `source_${i}_${j + 1}`,
+      category: getRandomCategory(), // Assign a random category
+      source: getRandomSource(), // Generate random source hash
       recipients: {
-        recipient1: `recipient1_block_${i}_txn_${j + 1}`,
-        recipient2: `recipient2_block_${i}_txn_${j + 1}`,
+        recipients: [
+          { address: generateRandomEthAddress() },
+          { address: generateRandomEthAddress() },
+        ],
       },
-      data: `Transaction data for block ${i}, txn ${j + 1}`,
+      data: Buffer.from(`Transaction data for block ${i}`), // Converting string to Bytes
       data_as_json: {
-        key1: `value1_block_${i}_txn_${j + 1}`,
-        key2: `value2_block_${i}_txn_${j + 1}`,
+        key1: `value1_block_${i}`,
+        key2: `value2_block_${i}`,
       },
-      sig: `sig_${i}_${j + 1}`,
+      sig: generateRandomHash(), // Generate random signature hash
     }));
 
     await prisma.transaction.createMany({

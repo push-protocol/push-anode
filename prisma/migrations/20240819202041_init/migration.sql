@@ -10,15 +10,16 @@ CREATE TABLE "Block" (
 -- CreateTable
 CREATE TABLE "Transaction" (
     "ts" INTEGER NOT NULL DEFAULT 0,
+    "txn_hash" VARCHAR(128) NOT NULL,
     "block_hash" VARCHAR(128) NOT NULL,
     "category" VARCHAR(32) NOT NULL,
     "source" VARCHAR(64) NOT NULL,
     "recipients" JSONB,
-    "data" TEXT NOT NULL,
+    "data" BYTEA NOT NULL,
     "data_as_json" JSONB,
     "sig" TEXT NOT NULL,
 
-    CONSTRAINT "Transaction_pkey" PRIMARY KEY ("sig")
+    CONSTRAINT "Transaction_pkey" PRIMARY KEY ("txn_hash")
 );
 
 -- CreateIndex
