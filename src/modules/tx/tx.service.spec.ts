@@ -62,14 +62,14 @@ describe('TxService', () => {
         .spyOn(prismaService.transaction, 'findMany')
         .mockResolvedValue(mockTransactions);
 
-      const params = {
-        category: 'category1',
-        sortKey: '1722512552.001000',
-        direction: 'desc' as const, // Explicitly typing the direction
-        showDetails: false,
-      };
 
-      const result = await service.push_getTransactions(params);
+
+      const result = await service.push_getTransactions(
+        1722512552.001,
+        'desc',
+        10,
+        'category1',
+      );
 
       expect(result.blocks.length).toBe(1);
       expect(result.blocks[0].transactions.length).toBe(2);

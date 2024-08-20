@@ -28,4 +28,5 @@ model Transaction {
 
   @@id([txn_hash])
   @@index([block_hash], name: "transaction_block_hash_idx")
+  @@index([recipients(ops: JsonbPathOps)], type: Gin)
 }

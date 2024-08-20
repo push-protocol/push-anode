@@ -9,19 +9,18 @@ import { Prisma } from '@prisma/client';
 export class TxService {
   constructor(private prisma: PrismaService) {}
 
-  async push_getTransactions(params: {
-    category?: string;
-    sortKey: string;
-    direction?: 'asc' | 'desc';
-    showDetails?: boolean; // This is now unused but kept for potential future use
-    pageSize?: number; // New parameter for page size
-  }): Promise<PaginatedBlocksResponse> {
-    const { category, sortKey, direction = 'desc', pageSize = 10 } = params;
+  async push_getTransactions(
+    startTime: number,
+    direction: string,
+    pageSize: number,
+    category?: string,
+  ): Promise<PaginatedBlocksResponse> {
+    const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
     const where = {
       ...(category && { category }), // Filter by category if provided
       ts: {
-        [direction === 'asc' ? 'gte' : 'lte']: parseFloat(sortKey), // Use UNIX timestamp as is
+        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime, // Use UNIX timestamp as is
       },
     };
 
@@ -36,7 +35,61 @@ export class TxService {
     const transactions = await this.prisma.transaction.findMany({
       where,
       orderBy: {
-        ts: direction,
+        ts: orderByDirection,
+      },
+      take: pageSize,
+    });
+
+    const blocks = await this.groupTransactionsByBlock(transactions);
+    const lastTs = transactions.length
+      ? transactions[transactions.length - 1].ts
+      : 0;
+
+    return {
+      blocks,
+      lastTs,
+      totalPages, // Include total pages in the response
+    };
+  }
+
+  async push_getTransactionsByRecipient(
+    recipientAddress: string,
+    startTime: number,
+    direction: string,
+    pageSize: number,
+  ): Promise<PaginatedBlocksResponse> {
+  
+    const orderByDirection = direction === 'asc' ? 'asc' : 'desc';
+
+    const where = {
+      AND: [
+        {
+          ts: {
+            [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
+          },
+        },
+        {
+          recipients: {
+            path: ['address'],
+            equals: recipientAddress,
+          },
+        },
+      ],
+    };
+
+    // Calculate the total count of transactions
+    const totalTransactions = await this.prisma.transaction.count({
+      where,
+    });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalTransactions / pageSize);
+
+    // Fetch transactions with pagination
+    const transactions = await this.prisma.transaction.findMany({
+      where,
+      orderBy: {
+        ts: orderByDirection,
       },
       take: pageSize, // Apply the page size
     });

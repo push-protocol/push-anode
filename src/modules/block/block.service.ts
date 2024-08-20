@@ -10,10 +10,11 @@ export class BlockService {
   constructor(private prisma: PrismaService) {}
 
   async push_getBlocksByTime(
-    params: [number, string, boolean, number?], // startTime, direction, showDetails, pageSize
+    startTime: number,
+    direction: string,
+    showDetails: boolean,
+    pageSize: number,
   ): Promise<PaginatedBlocksResponse> {
-    const [startTime, direction, showDetails, pageSize = 10] = params;
-
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
     // Calculate the total count of blocks

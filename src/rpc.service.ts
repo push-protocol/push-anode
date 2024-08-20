@@ -14,31 +14,62 @@ export class RpcService {
   ) {}
 
   async getBlocks(
-    startTime: number,
-    direction: string,
-    showDetails: boolean,
+    startTime?: number,
+    direction?: string,
+    showDetails?: boolean,
+    pageSize?: number,
   ): Promise<PaginatedBlocksResponse> {
-    // Default values
-    const finalDirection = direction || 'DESC';
-    const finalShowDetails = showDetails || false;
-    return this.blockService.push_getBlocksByTime([
-      startTime,
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalShowDetails = showDetails ?? false;
+    const finalPageSize = pageSize ?? 10;
+
+    return this.blockService.push_getBlocksByTime(
+      finalStartTime,
       finalDirection,
       finalShowDetails,
-    ]);
+      finalPageSize,
+    );
   }
 
   async getBlockByHash(hash: string) {
     return this.blockService.push_getBlockByHash([hash]);
   }
 
-  async getTxs(params: {
-    category?: string;
-    sortKey: string;
-    direction?: 'asc' | 'desc';
-    showDetails?: boolean;
-  }): Promise<PaginatedBlocksResponse> {
-    return this.txService.push_getTransactions(params);
+  async getTxs(
+    startTime?: number,
+    direction?: string,
+    pageSize?: number,
+    category?: string,
+  ): Promise<PaginatedBlocksResponse> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalPageSize = pageSize ?? 10;
+
+    return this.txService.push_getTransactions(
+      finalStartTime,
+      finalDirection,
+      finalPageSize,
+      category,
+    );
+  }
+
+  async getTxsByRecipient(
+    recipientAddress: string,
+    startTime?: number,
+    direction?: string,
+    pageSize?: number,
+  ): Promise<PaginatedBlocksResponse> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalPageSize = pageSize ?? 10;
+
+    return this.txService.push_getTransactionsByRecipient(
+      recipientAddress,
+      finalStartTime,
+      finalDirection,
+      finalPageSize,
+    );
   }
 
   async getTxByHash(params: { hash: string }): Promise<TransactionDTO> {

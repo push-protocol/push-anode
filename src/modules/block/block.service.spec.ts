@@ -63,13 +63,14 @@ describe('BlockService', () => {
         .mockResolvedValue(mockTransactions);
 
       const startTimeEpoch = Math.floor(Date.now() / 1000); // Generate current epoch time as number
-      const params: [number, string, boolean] = [
-        startTimeEpoch, // Pass epoch time as a number
+    
+
+      const result = await service.push_getBlocksByTime(
+        startTimeEpoch,
         'DESC',
         true,
-      ];
-
-      const result = await service.push_getBlocksByTime(params);
+        10
+      );
 
       // Ensure that blocks[0] has transactions
       if ('transactions' in result.blocks[0]) {

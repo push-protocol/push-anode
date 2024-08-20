@@ -27,3 +27,6 @@ CREATE INDEX "blocks_idx" ON "Block"("block_hash");
 
 -- CreateIndex
 CREATE INDEX "transaction_block_hash_idx" ON "Transaction"("block_hash");
+
+-- CreateIndex
+CREATE INDEX "Transaction_recipients_idx" ON "Transaction" USING GIN ("recipients" jsonb_path_ops);
