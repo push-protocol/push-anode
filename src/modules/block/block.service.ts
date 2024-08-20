@@ -81,10 +81,10 @@ export class BlockService {
   }
 
   async push_getBlockByHash(
-    params: [string],
-  ): Promise<BlockWithTransactions | null> {
-    const [blockHash] = params;
-
+    blockHash: string,
+    showDetails: boolean = true,
+  ): Promise<PaginatedBlocksResponse> {
+    // Fetch the block based on the block hash
     const block = await this.prisma.block.findUnique({
       where: { block_hash: blockHash },
     });
@@ -93,14 +93,20 @@ export class BlockService {
       throw new Error('Block not found');
     }
 
-    const transactions = await this.prisma.transaction.findMany({
-      where: { block_hash: block.block_hash },
-    });
-
-    return {
+    // Create the initial response block structure
+    let responseBlock: BlockWithTransactions = {
       block_hash: block.block_hash,
       ts: block.ts,
-      transactions: transactions.map((tx: TransactionDTO) => ({
+      transactions: [],
+    };
+
+    if (showDetails) {
+      // If showDetails is true, fetch and include transactions in the response
+      const transactions = await this.prisma.transaction.findMany({
+        where: { block_hash: block.block_hash },
+      });
+
+      responseBlock.transactions = transactions.map((tx: TransactionDTO) => ({
         txn_hash: tx.txn_hash,
         ts: tx.ts,
         block_hash: tx.block_hash,
@@ -109,7 +115,14 @@ export class BlockService {
         recipients: tx.recipients,
         data_as_json: tx.data_as_json,
         sig: tx.sig,
-      })),
+      }));
+    }
+
+    // The `push_getBlockByHash` only returns one block, so we return it wrapped in an array.
+    return {
+      blocks: [responseBlock],
+      lastTs: block.ts,
+      totalPages: 1, // Since this is a single block, total pages are 1.
     };
   }
 

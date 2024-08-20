@@ -3,7 +3,6 @@ import { RpcHandler } from '@klerick/nestjs-json-rpc';
 import { BlockService } from './modules/block/block.service';
 import { PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
 import { TxService } from './modules/tx/tx.service';
-import { TransactionDTO } from './modules/tx/dto/transaction.dto';
 
 @RpcHandler()
 @Injectable()
@@ -32,8 +31,8 @@ export class RpcService {
     );
   }
 
-  async getBlockByHash(hash: string) {
-    return this.blockService.push_getBlockByHash([hash]);
+  async getBlockByHash(hash: string): Promise<PaginatedBlocksResponse> {
+    return this.blockService.push_getBlockByHash(hash);
   }
 
   async getTxs(
@@ -72,9 +71,12 @@ export class RpcService {
     );
   }
 
-  async getTxByHash(params: { hash: string }): Promise<TransactionDTO> {
+  async getTxByHash(params: {
+    hash: string;
+  }): Promise<PaginatedBlocksResponse> {
     return this.txService.push_getTransactionByHash(params);
   }
+
   async getCounts(): Promise<{
     totalBlocks: number;
     totalTransactions: number;
@@ -92,5 +94,63 @@ export class RpcService {
       totalTransactions,
       dailyTransactions,
     };
+  }
+
+  async searchByAddress(
+    searchTerm: string,
+    startTime?: number,
+    direction?: string,
+    pageSize?: number,
+    showDetails?: boolean,
+  ): Promise<PaginatedBlocksResponse> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalShowDetails = showDetails ?? false;
+    const finalPageSize = pageSize ?? 10;
+
+    const blockSearch = this.blockService.push_getBlockByHash(
+      searchTerm,
+      finalShowDetails,
+    );
+    const txSearch = this.txService.push_getTransactionByHash({
+      hash: searchTerm,
+    });
+    const recipientSearch = this.txService.push_getTransactionsByRecipient(
+      searchTerm,
+      finalStartTime,
+      finalDirection,
+      finalPageSize,
+    );
+
+    try {
+      const [blockResult, txResult, recipientResult] = await Promise.allSettled(
+        [blockSearch, txSearch, recipientSearch],
+      );
+
+      if (blockResult.status === 'fulfilled' && blockResult.value) {
+        return blockResult.value;
+      }
+
+      if (txResult.status === 'fulfilled' && txResult.value) {
+        return txResult.value;
+      }
+
+      if (recipientResult.status === 'fulfilled' && recipientResult.value) {
+        return recipientResult.value;
+      }
+
+      return {
+        blocks: [],
+        lastTs: 0,
+        totalPages: 0,
+      };
+    } catch (error) {
+      console.error('Error during search:', error);
+      return {
+        blocks: [],
+        lastTs: 0,
+        totalPages: 0,
+      };
+    }
   }
 }

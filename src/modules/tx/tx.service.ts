@@ -58,7 +58,6 @@ export class TxService {
     direction: string,
     pageSize: number,
   ): Promise<PaginatedBlocksResponse> {
-  
     const orderByDirection = direction === 'asc' ? 'asc' : 'desc';
 
     const where = {
@@ -158,15 +157,9 @@ export class TxService {
     return Array.from(blocksMap.values());
   }
 
-  /**
-   * Fetches a transaction based on its hash.
-   *
-   * @param params - The parameters containing the transaction hash.
-   * @returns A transaction object if found, otherwise throws an error.
-   */
   async push_getTransactionByHash(params: {
     hash: string;
-  }): Promise<TransactionDTO> {
+  }): Promise<PaginatedBlocksResponse> {
     const tx = await this.prisma.transaction.findUnique({
       where: { txn_hash: params.hash },
     });
@@ -175,15 +168,29 @@ export class TxService {
       throw new Error('Transaction not found');
     }
 
-    return {
-      txn_hash: tx.txn_hash,
-      ts: tx.ts,
+    // Create a block response object with a single transaction
+    const blockWithTransaction: BlockWithTransactions = {
       block_hash: tx.block_hash,
-      category: tx.category,
-      source: tx.source,
-      recipients: tx.recipients ?? ({} as Prisma.JsonValue), // Ensure recipients is always defined
-      data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue), // Ensure data_as_json is always defined
-      sig: tx.sig,
+      ts: tx.ts,
+      transactions: [
+        {
+          txn_hash: tx.txn_hash,
+          ts: tx.ts,
+          block_hash: tx.block_hash,
+          category: tx.category,
+          source: tx.source,
+          recipients: tx.recipients ?? ({} as Prisma.JsonValue), // Ensure recipients is always defined
+          data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue), // Ensure data_as_json is always defined
+          sig: tx.sig,
+        },
+      ],
+    };
+
+    // Since it's a single transaction, lastTs is the timestamp of that transaction, and totalPages is 1.
+    return {
+      blocks: [blockWithTransaction], // Only one block in this case
+      lastTs: tx.ts,
+      totalPages: 1,
     };
   }
 }
