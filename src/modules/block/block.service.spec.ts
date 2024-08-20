@@ -109,8 +109,7 @@ describe('BlockService', () => {
         .spyOn(prismaService.transaction, 'findMany')
         .mockResolvedValue(mockTransactions);
 
-      const params: [string] = ['hash1'];
-      const result = await service.push_getBlockByHash(params);
+      const result = await service.push_getBlockByHash('hash1');
 
       expect(result).toEqual({
         ...mockBlock,
@@ -121,11 +120,9 @@ describe('BlockService', () => {
     it('should throw an error if block not found', async () => {
       jest.spyOn(prismaService.block, 'findUnique').mockResolvedValue(null);
 
-      const params: [string] = ['nonExistentHash'];
-
-      await expect(service.push_getBlockByHash(params)).rejects.toThrow(
-        'Block not found',
-      );
+      await expect(
+        service.push_getBlockByHash('nonExistentHash'),
+      ).rejects.toThrow('Block not found');
     });
   });
 });

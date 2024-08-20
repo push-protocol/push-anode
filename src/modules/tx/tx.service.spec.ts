@@ -95,9 +95,7 @@ describe('TxService', () => {
         .spyOn(prismaService.transaction, 'findUnique')
         .mockResolvedValue(mockTransaction);
 
-      const result = await service.push_getTransactionByHash({
-        hash: 'sig1',
-      });
+      const result = await service.push_getTransactionByHash('sig1');
 
       expect(result).toEqual(mockTransaction);
     });
@@ -108,7 +106,7 @@ describe('TxService', () => {
         .mockResolvedValue(null);
 
       await expect(
-        service.push_getTransactionByHash({ hash: 'nonExistentHash' }),
+        service.push_getTransactionByHash('nonExistentHash'),
       ).rejects.toThrow('Transaction not found');
     });
   });

@@ -18,18 +18,16 @@ export class TxService {
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
     const where = {
-      ...(category && { category }), // Filter by category if provided
+      ...(category && { category }),
       ts: {
-        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime, // Use UNIX timestamp as is
+        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
       },
     };
 
-    // Calculate the total count of transactions
     const totalTransactions = await this.prisma.transaction.count({
       where,
     });
 
-    // Calculate total pages
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
     const transactions = await this.prisma.transaction.findMany({
@@ -48,7 +46,7 @@ export class TxService {
     return {
       blocks,
       lastTs,
-      totalPages, // Include total pages in the response
+      totalPages,
     };
   }
 
@@ -58,40 +56,56 @@ export class TxService {
     direction: string,
     pageSize: number,
   ): Promise<PaginatedBlocksResponse> {
-    const orderByDirection = direction === 'asc' ? 'asc' : 'desc';
+    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
 
-    const where = {
-      AND: [
-        {
-          ts: {
-            [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
-          },
-        },
-        {
-          recipients: {
-            path: ['address'],
-            equals: recipientAddress,
-          },
-        },
-      ],
-    };
+    console.log('recipientAddress ', recipientAddress);
+    // Construct and log the SQL query for total count
+    const countQuery = Prisma.sql`
+    SELECT COUNT(*) FROM "Transaction"
+    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
+    AND jsonb_path_exists(
+      recipients,
+      '$.recipients[*] ? (@.address == "${recipientAddress}")'
+    )
+  `;
 
-    // Calculate the total count of transactions
-    const totalTransactions = await this.prisma.transaction.count({
-      where,
-    });
+    console.log('Count Query:', countQuery.sql); // Log the count query
 
-    // Calculate total pages
-    const totalPages = Math.ceil(totalTransactions / pageSize);
+    // Execute the total count query
+    const totalTransactions = await this.prisma.$queryRaw<number>(countQuery);
 
-    // Fetch transactions with pagination
-    const transactions = await this.prisma.transaction.findMany({
-      where,
-      orderBy: {
-        ts: orderByDirection,
-      },
-      take: pageSize, // Apply the page size
-    });
+    const totalPages = Math.ceil(Number(totalTransactions) / pageSize);
+
+    // Construct and log the SQL query for fetching transactions
+
+
+    console.log(`
+    SELECT * FROM "Transaction"
+    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
+    AND jsonb_path_exists(
+      recipients,
+      '$.recipients[*] ? (@.address == "${recipientAddress}")'
+    )
+    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    LIMIT ${Prisma.raw(pageSize.toString())}
+  `);
+
+    const fetchQuery = Prisma.sql`
+    SELECT * FROM "Transaction"
+    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
+    AND jsonb_path_exists(
+      recipients,
+      '$.recipients[*] ? (@.address == "${recipientAddress}")'
+    )
+    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    LIMIT ${Prisma.raw(pageSize.toString())}
+  `;
+
+    //console.log('Fetch Query:', fetchQuery.sql); // Log the fetch query
+
+    // Execute the fetch query
+    const transactions =
+      await this.prisma.$queryRaw<TransactionDTO[]>(fetchQuery);
 
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
@@ -101,24 +115,57 @@ export class TxService {
     return {
       blocks,
       lastTs,
-      totalPages, // Include total pages in the response
+      totalPages,
     };
   }
 
-  // Total transactions count
+  async push_getTransactionByHash(
+    transactionHash: string,
+  ): Promise<PaginatedBlocksResponse> {
+    const tx = await this.prisma.transaction.findUnique({
+      where: { txn_hash: transactionHash },
+    });
+
+    if (!tx) {
+      return { blocks: [], lastTs: 0, totalPages: 0 };
+    }
+
+    const blockWithTransaction: BlockWithTransactions = {
+      block_hash: tx.block_hash,
+      ts: tx.ts,
+      transactions: [
+        {
+          txn_hash: tx.txn_hash,
+          ts: tx.ts,
+          block_hash: tx.block_hash,
+          category: tx.category,
+          source: tx.source,
+          recipients: tx.recipients ?? ({} as Prisma.JsonValue),
+          data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue),
+          sig: tx.sig,
+        },
+      ],
+    };
+
+    return {
+      blocks: [blockWithTransaction],
+      lastTs: tx.ts,
+      totalPages: 1,
+    };
+  }
+
   async getTotalTransactions(): Promise<number> {
     return this.prisma.transaction.count();
   }
 
-  // Daily transactions count (from the start of the day)
   async getDailyTransactions(): Promise<number> {
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Start of the day
+    todayStart.setHours(0, 0, 0, 0);
 
     return this.prisma.transaction.count({
       where: {
         ts: {
-          gte: Math.floor(todayStart.getTime() / 1000), // Using epoch time for comparison
+          gte: Math.floor(todayStart.getTime() / 1000),
         },
       },
     });
@@ -130,14 +177,11 @@ export class TxService {
     const blocksMap = new Map<string, BlockWithTransactions>();
 
     for (const tx of transactions) {
-      // Check if the block is already in the map
       if (!blocksMap.has(tx.block_hash)) {
-        // Fetch the block data associated with the block_hash only if it hasn't been fetched already
         const block = await this.prisma.block.findUnique({
           where: { block_hash: tx.block_hash },
         });
 
-        // Ensure block exists before proceeding
         if (block) {
           blocksMap.set(tx.block_hash, {
             block_hash: block.block_hash,
@@ -147,7 +191,6 @@ export class TxService {
         }
       }
 
-      // If the block exists in the map, add the transaction to the block's transactions list
       const blockWithTransactions = blocksMap.get(tx.block_hash);
       if (blockWithTransactions) {
         blockWithTransactions.transactions.push(tx);
@@ -155,42 +198,5 @@ export class TxService {
     }
 
     return Array.from(blocksMap.values());
-  }
-
-  async push_getTransactionByHash(params: {
-    hash: string;
-  }): Promise<PaginatedBlocksResponse> {
-    const tx = await this.prisma.transaction.findUnique({
-      where: { txn_hash: params.hash },
-    });
-
-    if (!tx) {
-      throw new Error('Transaction not found');
-    }
-
-    // Create a block response object with a single transaction
-    const blockWithTransaction: BlockWithTransactions = {
-      block_hash: tx.block_hash,
-      ts: tx.ts,
-      transactions: [
-        {
-          txn_hash: tx.txn_hash,
-          ts: tx.ts,
-          block_hash: tx.block_hash,
-          category: tx.category,
-          source: tx.source,
-          recipients: tx.recipients ?? ({} as Prisma.JsonValue), // Ensure recipients is always defined
-          data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue), // Ensure data_as_json is always defined
-          sig: tx.sig,
-        },
-      ],
-    };
-
-    // Since it's a single transaction, lastTs is the timestamp of that transaction, and totalPages is 1.
-    return {
-      blocks: [blockWithTransaction], // Only one block in this case
-      lastTs: tx.ts,
-      totalPages: 1,
-    };
   }
 }

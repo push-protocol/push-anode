@@ -31,8 +31,11 @@ export class RpcService {
     );
   }
 
-  async getBlockByHash(hash: string): Promise<PaginatedBlocksResponse> {
-    return this.blockService.push_getBlockByHash(hash);
+  async getBlockByHash(
+    blockHash: string,
+    showDetails = true,
+  ): Promise<PaginatedBlocksResponse> {
+    return this.blockService.push_getBlockByHash(blockHash, showDetails);
   }
 
   async getTxs(
@@ -71,10 +74,8 @@ export class RpcService {
     );
   }
 
-  async getTxByHash(params: {
-    hash: string;
-  }): Promise<PaginatedBlocksResponse> {
-    return this.txService.push_getTransactionByHash(params);
+  async getTxByHash(transactionHash: string): Promise<PaginatedBlocksResponse> {
+    return this.txService.push_getTransactionByHash(transactionHash);
   }
 
   async getCounts(): Promise<{
@@ -112,9 +113,7 @@ export class RpcService {
       searchTerm,
       finalShowDetails,
     );
-    const txSearch = this.txService.push_getTransactionByHash({
-      hash: searchTerm,
-    });
+    const txSearch = this.txService.push_getTransactionByHash(searchTerm);
     const recipientSearch = this.txService.push_getTransactionsByRecipient(
       searchTerm,
       finalStartTime,
@@ -127,15 +126,21 @@ export class RpcService {
         [blockSearch, txSearch, recipientSearch],
       );
 
-      if (blockResult.status === 'fulfilled' && blockResult.value) {
+      if (
+        blockResult.status === 'fulfilled' &&
+        blockResult.value.blocks.length > 0
+      ) {
         return blockResult.value;
       }
 
-      if (txResult.status === 'fulfilled' && txResult.value) {
+      if (txResult.status === 'fulfilled' && txResult.value.blocks.length > 0) {
         return txResult.value;
       }
 
-      if (recipientResult.status === 'fulfilled' && recipientResult.value) {
+      if (
+        recipientResult.status === 'fulfilled' &&
+        recipientResult.value.blocks.length > 0
+      ) {
         return recipientResult.value;
       }
 
