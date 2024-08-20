@@ -58,48 +58,39 @@ export class TxService {
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
 
-    console.log('recipientAddress ', recipientAddress);
-    // Construct and log the SQL query for total count
+    // Construct the actual SQL query using Prisma's API
     const countQuery = Prisma.sql`
-    SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
-    AND jsonb_path_exists(
-      recipients,
-      '$.recipients[*] ? (@.address == "${recipientAddress}")'
-    )
-  `;
-
-    console.log('Count Query:', countQuery.sql); // Log the count query
+  SELECT COUNT(*) FROM "Transaction"
+  WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
+  AND jsonb_path_exists(
+    recipients,
+    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+  )
+`;
 
     // Execute the total count query
-    const totalTransactions = await this.prisma.$queryRaw<number>(countQuery);
+    const totalTransactionsResult =
+      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
 
-    const totalPages = Math.ceil(Number(totalTransactions) / pageSize);
+    // Extract the count value and convert it to a number
+    const totalTransactions =
+      totalTransactionsResult.length > 0
+        ? Number(totalTransactionsResult[0].count)
+        : 0;
 
-    // Construct and log the SQL query for fetching transactions
-
-
-    console.log(`
-    SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
-    AND jsonb_path_exists(
-      recipients,
-      '$.recipients[*] ? (@.address == "${recipientAddress}")'
-    )
-    ORDER BY ts ${Prisma.raw(orderByDirection)}
-    LIMIT ${Prisma.raw(pageSize.toString())}
-  `);
+    // Calculate total pages
+    const totalPages = Math.ceil(totalTransactions / pageSize);
 
     const fetchQuery = Prisma.sql`
-    SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
-    AND jsonb_path_exists(
-      recipients,
-      '$.recipients[*] ? (@.address == "${recipientAddress}")'
-    )
-    ORDER BY ts ${Prisma.raw(orderByDirection)}
-    LIMIT ${Prisma.raw(pageSize.toString())}
-  `;
+  SELECT * FROM "Transaction"
+  WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
+  AND jsonb_path_exists(
+    recipients,
+    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+  )
+  ORDER BY ts ${Prisma.raw(orderByDirection)}
+  LIMIT ${Prisma.raw(pageSize.toString())}
+`;
 
     //console.log('Fetch Query:', fetchQuery.sql); // Log the fetch query
 
