@@ -1,14 +1,12 @@
-1. What is validator in the block object
-2. What is txn in the block object
-3. send block size in the response.
-5. Add status in transactions object 
-6. How to derive the address of the source / from address and it should be given in response. 
-
-
+5. What is validator in the block object
+6. Add status in transactions object 
+7. How to derive the address of the source / from address and it should be given in response. 
 
 Done.
 
-4. Current time, block are not coming. getBlocks
-7. Receipt search is not working.
+1. Current time, block are not coming. getBlocks
+2. Receipt search is not working.
+3. What is txn in the block object
+4. send block size in the response.
 
 

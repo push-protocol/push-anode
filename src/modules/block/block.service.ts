@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BlockDTO } from './dto/block.dto';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { TransactionDTO } from '../tx/dto/transaction.dto';
+import { Block } from '@prisma/client';
 
 @Injectable()
 export class BlockService {
@@ -37,37 +37,31 @@ export class BlockService {
 
     const lastTs = blocks.length ? blocks[blocks.length - 1].ts : 0;
 
-    let responseBlocks: BlockWithTransactions[] = blocks.map(
-      (block: BlockDTO) => ({
-        block_hash: block.block_hash,
-        ts: block.ts,
-        transactions: [],
-      }),
-    );
+    const responseBlocks: BlockWithTransactions[] = await Promise.all(
+      blocks.map(async (block: Block): Promise<BlockWithTransactions> => {
+        const totalNumberOfTxns = await this.prisma.transaction.count({
+          where: { block_hash: block.block_hash },
+        });
 
-    if (showDetails) {
-      responseBlocks = await Promise.all(
-        blocks.map(async (block: BlockDTO): Promise<BlockWithTransactions> => {
-          const transactions = await this.prisma.transaction.findMany({
+        let transactions: TransactionDTO[] = [];
+
+        if (showDetails) {
+          transactions = await this.prisma.transaction.findMany({
             where: { block_hash: block.block_hash },
           });
-          return {
-            block_hash: block.block_hash,
-            ts: block.ts,
-            transactions: transactions.map((tx: TransactionDTO) => ({
-              txn_hash: tx.txn_hash,
-              ts: tx.ts,
-              block_hash: tx.block_hash,
-              category: tx.category,
-              source: tx.source,
-              recipients: tx.recipients,
-              data_as_json: tx.data_as_json,
-              sig: tx.sig,
-            })),
-          };
-        }),
-      );
-    }
+        }
+        
+        const blockSize = block.data.length; 
+
+        return {
+          blockHash: block.block_hash,
+          blockSize,
+          ts: block.ts,
+          transactions: transactions,
+          totalNumberOfTxns,
+        };
+      }),
+    );
 
     return {
       blocks: responseBlocks,
@@ -88,10 +82,16 @@ export class BlockService {
       return { blocks: [], lastTs: 0, totalPages: 0 };
     }
 
+    const totalNumberOfTxns = await this.prisma.transaction.count({
+      where: { block_hash: block.block_hash },
+    });
+
     let responseBlock: BlockWithTransactions = {
-      block_hash: block.block_hash,
+      blockHash: block.block_hash,
+      blockSize: block.data.length,
       ts: block.ts,
       transactions: [],
+      totalNumberOfTxns,
     };
 
     if (showDetails) {

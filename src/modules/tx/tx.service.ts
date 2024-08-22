@@ -116,8 +116,22 @@ export class TxService {
       return { blocks: [], lastTs: 0, totalPages: 0 };
     }
 
+    const block = await this.prisma.block.findUnique({
+      where: { block_hash: tx.block_hash },
+    });
+
+    if (!block) {
+      return { blocks: [], lastTs: 0, totalPages: 0 };
+    }
+
+    const totalNumberOfTxns = await this.prisma.transaction.count({
+      where: { block_hash: tx.block_hash },
+    });
+
     const blockWithTransaction: BlockWithTransactions = {
-      block_hash: tx.block_hash,
+      blockHash: tx.block_hash,
+      blockSize: block.data.length,
+      totalNumberOfTxns,
       ts: tx.ts,
       transactions: [
         {
@@ -169,10 +183,15 @@ export class TxService {
         });
 
         if (block) {
+          const totalNumberOfTxns = await this.prisma.transaction.count({
+            where: { block_hash: block.block_hash },
+          });
           blocksMap.set(tx.block_hash, {
-            block_hash: block.block_hash,
+            blockHash: block.block_hash,
+            blockSize: block.data.length,
             ts: block.ts,
             transactions: [],
+            totalNumberOfTxns,
           });
         }
       }
