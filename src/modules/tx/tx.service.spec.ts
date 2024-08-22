@@ -40,6 +40,8 @@ describe('TxService', () => {
           block_hash: 'blockHash1',
           category: 'category1',
           source: 'source1',
+          status: 'SUCCESS',
+          from: 'from',
           recipients: { recipient1: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
           data_as_json: { key: 'value1' } as Prisma.JsonValue, // Correct type for JSON fields
           sig: 'sig1',
@@ -51,6 +53,8 @@ describe('TxService', () => {
           block_hash: 'blockHash1',
           category: 'category1',
           source: 'source2',
+          status: 'SUCCESS',
+          from: 'from',
           recipients: { recipient2: 'value2' } as Prisma.JsonValue,
           data_as_json: { key: 'value2' } as Prisma.JsonValue,
           sig: 'sig2',
@@ -83,6 +87,8 @@ describe('TxService', () => {
         block_hash: 'blockHash1',
         category: 'category1',
         source: 'source1',
+        status: 'SUCCESS',
+        from: 'from',
         recipients: { recipient1: 'value1' } as Prisma.JsonValue,
         data: Buffer.from('data1'),
         data_as_json: { key: 'value1' } as Prisma.JsonValue,

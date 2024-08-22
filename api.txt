@@ -1,6 +1,5 @@
-5. What is validator in the block object
-6. Add status in transactions object 
-7. How to derive the address of the source / from address and it should be given in response. 
+
+10. indexes
 
 Done.
 
@@ -8,5 +7,12 @@ Done.
 2. Receipt search is not working.
 3. What is txn in the block object
 4. send block size in the response.
+5. Add status in transactions object  - by default add the status as success. add new column in trasnction table.
+6. How to derive the address of the source / from address and it should be given in response. 
+    - from create a random address and add a column.
+    - later this should be auto derived from sig. 
 
-
+7. What is validator in the block object - get this from signers, this has consesus as well.
+8. Block data, data_as_json
+9. hex string
+11. data in transaction

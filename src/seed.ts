@@ -115,6 +115,8 @@ async function main() {
         block_hash: blockHash,
         category: txObj.getTx()?.getCategory() ?? '',
         source: txObj.getTx()?.getSource() ?? '',
+        status: 'SUCCESS',
+        from: generateRandomEthAddress(),
         recipients: {
           recipients:
             txObj
@@ -122,8 +124,8 @@ async function main() {
               ?.getRecipientsList()
               .map((recipient) => ({ address: recipient })) || [],
         },
-        data: Buffer.from(txObj.serializeBinary()), // Convert protobuf message to binary format
-        data_as_json: recursivelyConvertToJSON(txObj.toObject()), // Convert to JSON-compatible format
+        data: Buffer.from(initDid.serializeBinary()), // Convert protobuf message to binary format
+        data_as_json: recursivelyConvertToJSON(initDid.toObject()), // Convert to JSON-compatible format
         sig: bufferToHex(
           txObj.getTx()?.getSignature_asU8() || new Uint8Array(),
         ), // Convert signature to hex string
@@ -152,7 +154,8 @@ async function main() {
     await prisma.block.create({
       data: {
         block_hash: blockHash,
-        data: Buffer.from(blockData), // Store serialized block data
+        data_as_json: recursivelyConvertToJSON(block.toObject()),
+        data: Buffer.from(blockData),
         ts: block.getTs(),
       },
     });

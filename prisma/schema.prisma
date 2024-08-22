@@ -10,6 +10,7 @@ datasource db {
 model Block {
   block_hash String @id @map("block_hash") @db.Text
   data       Bytes  @db.ByteA
+  data_as_json Json  @db.JsonB
   ts         Int    @default(0) @map("ts")
 
   @@index([block_hash], name: "blocks_idx")
@@ -21,9 +22,11 @@ model Transaction {
   block_hash   String @db.VarChar(128)
   category     String @db.VarChar(32)
   source       String @db.VarChar(64)
-  recipients   Json?  @db.JsonB
+  status       String @db.VarChar(64)
+  from         String @db.VarChar(128)
+  recipients   Json  @db.JsonB
   data         Bytes  @db.ByteA
-  data_as_json Json?  @db.JsonB
+  data_as_json Json  @db.JsonB
   sig          String @db.Text
 
   @@id([txn_hash])

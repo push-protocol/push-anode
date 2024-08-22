@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
-import { TransactionDTO } from '../tx/dto/transaction.dto';
-import { Block } from '@prisma/client';
+import { Block, Prisma, Transaction } from '@prisma/client';
 
 @Injectable()
 export class BlockService {
@@ -43,21 +42,35 @@ export class BlockService {
           where: { block_hash: block.block_hash },
         });
 
-        let transactions: TransactionDTO[] = [];
+        let transactions: Transaction[] = [];
 
         if (showDetails) {
           transactions = await this.prisma.transaction.findMany({
             where: { block_hash: block.block_hash },
           });
         }
-        
-        const blockSize = block.data.length; 
+
+        const blockSize = block.data.length;
 
         return {
           blockHash: block.block_hash,
+          blockData: block.data.toString('hex'),
+          blockDataAsJson: block.data_as_json ?? ({} as Prisma.JsonValue),
           blockSize,
           ts: block.ts,
-          transactions: transactions,
+          transactions: transactions.map((tx) => ({
+            txnHash: tx.txn_hash,
+            ts: tx.ts,
+            blockHash: tx.block_hash,
+            category: tx.category,
+            source: tx.source,
+            status: tx.status,
+            from: tx.from,
+            recipients: tx.recipients,
+            txnDataAsJson: tx.data_as_json,
+            txnData: tx.data.toString('hex'),
+            sig: tx.sig,
+          })),
           totalNumberOfTxns,
         };
       }),
@@ -89,6 +102,8 @@ export class BlockService {
     let responseBlock: BlockWithTransactions = {
       blockHash: block.block_hash,
       blockSize: block.data.length,
+      blockData: block.data.toString('hex'),
+      blockDataAsJson: block.data_as_json,
       ts: block.ts,
       transactions: [],
       totalNumberOfTxns,
@@ -99,14 +114,17 @@ export class BlockService {
         where: { block_hash: block.block_hash },
       });
 
-      responseBlock.transactions = transactions.map((tx: TransactionDTO) => ({
-        txn_hash: tx.txn_hash,
+      responseBlock.transactions = transactions.map((tx) => ({
+        txnHash: tx.txn_hash,
         ts: tx.ts,
-        block_hash: tx.block_hash,
+        blockHash: tx.block_hash,
         category: tx.category,
         source: tx.source,
+        status: tx.status,
+        from: tx.from,
         recipients: tx.recipients,
-        data_as_json: tx.data_as_json,
+        txnDataAsJson: tx.data_as_json,
+        txnData: tx.data.toString('hex'),
         sig: tx.sig,
       }));
     }

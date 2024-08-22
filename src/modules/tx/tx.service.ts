@@ -2,8 +2,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { BlockWithTransactions } from '../block/dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from '../block/dto/paginated.blocks.response.dto';
-import { TransactionDTO } from './dto/transaction.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Transaction } from '@prisma/client';
 
 @Injectable()
 export class TxService {
@@ -91,7 +90,7 @@ export class TxService {
   `;
 
     const transactions =
-      await this.prisma.$queryRaw<TransactionDTO[]>(fetchQuery);
+      await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
 
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
@@ -131,17 +130,22 @@ export class TxService {
     const blockWithTransaction: BlockWithTransactions = {
       blockHash: tx.block_hash,
       blockSize: block.data.length,
+      blockData: block.data.toString('hex'),
+      blockDataAsJson: block.data_as_json,
       totalNumberOfTxns,
       ts: tx.ts,
       transactions: [
         {
-          txn_hash: tx.txn_hash,
+          txnHash: tx.txn_hash,
           ts: tx.ts,
-          block_hash: tx.block_hash,
+          blockHash: tx.block_hash,
           category: tx.category,
           source: tx.source,
-          recipients: tx.recipients ?? ({} as Prisma.JsonValue),
-          data_as_json: tx.data_as_json ?? ({} as Prisma.JsonValue),
+          status: tx.status,
+          from: tx.from,
+          recipients: tx.recipients,
+          txnData: tx.data.toString('hex'),
+          txnDataAsJson: tx.data_as_json ?? {},
           sig: tx.sig,
         },
       ],
@@ -172,7 +176,7 @@ export class TxService {
   }
 
   private async groupTransactionsByBlock(
-    transactions: TransactionDTO[],
+    transactions: Transaction[],
   ): Promise<BlockWithTransactions[]> {
     const blocksMap = new Map<string, BlockWithTransactions>();
 
@@ -188,6 +192,8 @@ export class TxService {
           });
           blocksMap.set(tx.block_hash, {
             blockHash: block.block_hash,
+            blockData: block.data.toString('hex'),
+            blockDataAsJson: block.data_as_json,
             blockSize: block.data.length,
             ts: block.ts,
             transactions: [],
@@ -198,7 +204,19 @@ export class TxService {
 
       const blockWithTransactions = blocksMap.get(tx.block_hash);
       if (blockWithTransactions) {
-        blockWithTransactions.transactions.push(tx);
+        blockWithTransactions.transactions.push({
+          txnHash: tx.txn_hash,
+          ts: tx.ts,
+          blockHash: tx.block_hash,
+          category: tx.category,
+          source: tx.source,
+          status: tx.status,
+          from: tx.from,
+          recipients: tx.recipients,
+          txnData: tx.data.toString('hex'),
+          txnDataAsJson: tx.data_as_json ?? {},
+          sig: tx.sig,
+        });
       }
     }
 

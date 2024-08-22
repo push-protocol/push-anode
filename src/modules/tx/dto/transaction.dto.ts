@@ -1,12 +1,15 @@
 import { Prisma } from '@prisma/client';
 
 export interface TransactionDTO {
-  txn_hash: string;
+  txnHash: string;
   ts: number;
-  block_hash: string;
+  blockHash: string;
   category: string;
   source: string;
-  recipients?: Prisma.JsonValue;
-  data_as_json?: Prisma.JsonValue;
+  status: string;
+  from: string;
+  recipients: Prisma.JsonValue;
+  txnData: string;
+  txnDataAsJson: Prisma.JsonValue;
   sig: string;
 }
