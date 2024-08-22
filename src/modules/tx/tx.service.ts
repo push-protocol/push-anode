@@ -57,44 +57,39 @@ export class TxService {
     pageSize: number,
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
+    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
 
-    // Construct the actual SQL query using Prisma's API
     const countQuery = Prisma.sql`
-  SELECT COUNT(*) FROM "Transaction"
-  WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
-  AND jsonb_path_exists(
-    recipients,
-    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
-  )
-`;
+    SELECT COUNT(*) FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    AND jsonb_path_exists(
+      recipients,
+      ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+    )
+  `;
 
     // Execute the total count query
     const totalTransactionsResult =
       await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
 
-    // Extract the count value and convert it to a number
     const totalTransactions =
       totalTransactionsResult.length > 0
         ? Number(totalTransactionsResult[0].count)
         : 0;
 
-    // Calculate total pages
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
     const fetchQuery = Prisma.sql`
-  SELECT * FROM "Transaction"
-  WHERE ts ${Prisma.raw(orderByDirection === 'ASC' ? '>=' : '<=')} ${Prisma.raw(startTime.toString())}
-  AND jsonb_path_exists(
-    recipients,
-    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
-  )
-  ORDER BY ts ${Prisma.raw(orderByDirection)}
-  LIMIT ${Prisma.raw(pageSize.toString())}
-`;
+    SELECT * FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    AND jsonb_path_exists(
+      recipients,
+      ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+    )
+    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    LIMIT ${Prisma.raw(pageSize.toString())}
+  `;
 
-    //console.log('Fetch Query:', fetchQuery.sql); // Log the fetch query
-
-    // Execute the fetch query
     const transactions =
       await this.prisma.$queryRaw<TransactionDTO[]>(fetchQuery);
 

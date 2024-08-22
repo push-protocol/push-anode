@@ -17,22 +17,20 @@ export class BlockService {
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
-    const totalBlocks = await this.prisma.block.count({
-      where: {
-        ts: {
-          gte: startTime,
-        },
+    const where = {
+      ts: {
+        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
       },
+    };
+
+    const totalBlocks = await this.prisma.block.count({
+      where,
     });
 
     const totalPages = Math.ceil(totalBlocks / pageSize);
 
     const blocks = await this.prisma.block.findMany({
-      where: {
-        ts: {
-          gte: startTime,
-        },
-      },
+      where,
       orderBy: { ts: orderByDirection },
       take: pageSize,
     });

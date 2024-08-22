@@ -62,8 +62,6 @@ describe('TxService', () => {
         .spyOn(prismaService.transaction, 'findMany')
         .mockResolvedValue(mockTransactions);
 
-
-
       const result = await service.push_getTransactions(
         1722512552.001,
         'desc',
