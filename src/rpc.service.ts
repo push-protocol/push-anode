@@ -17,17 +17,20 @@ export class RpcService {
     direction?: string,
     showDetails?: boolean,
     pageSize?: number,
+    page?: number, // Add page parameter here
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
     const finalShowDetails = showDetails ?? false;
     const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
 
     return this.blockService.push_getBlocksByTime(
       finalStartTime,
       finalDirection,
       finalShowDetails,
       finalPageSize,
+      finalPage, // Pass the page parameter
     );
   }
 
@@ -61,16 +64,19 @@ export class RpcService {
     startTime?: number,
     direction?: string,
     pageSize?: number,
+    page?: number, // Add page parameter here
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
     const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
 
     return this.txService.push_getTransactionsByRecipient(
       recipientAddress,
       finalStartTime,
       finalDirection,
       finalPageSize,
+      finalPage, // Pass the page parameter
     );
   }
 
@@ -103,11 +109,13 @@ export class RpcService {
     direction?: string,
     pageSize?: number,
     showDetails?: boolean,
+    page?: number, // Add page parameter here
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
     const finalShowDetails = showDetails ?? false;
     const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
 
     const blockSearch = this.blockService.push_getBlockByHash(
       searchTerm,
@@ -119,6 +127,7 @@ export class RpcService {
       finalStartTime,
       finalDirection,
       finalPageSize,
+      finalPage, // Pass the page parameter
     );
 
     try {

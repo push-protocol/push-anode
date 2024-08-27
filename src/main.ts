@@ -9,6 +9,12 @@ async function bootstrap() {
     logger: new WinstonLoggerService(),
   });
 
+  app.enableCors({
+    origin: '*', // Specify the client origin or use '*' for wide open access
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Accept',
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Push-Anode API')
     .setDescription('API documentation for Push-Anode project')

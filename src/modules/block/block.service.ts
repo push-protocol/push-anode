@@ -13,6 +13,7 @@ export class BlockService {
     direction: string,
     showDetails: boolean,
     pageSize: number,
+    page: number = 1, // Default page number is 1
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
@@ -27,11 +28,13 @@ export class BlockService {
     });
 
     const totalPages = Math.ceil(totalBlocks / pageSize);
+    const skip = (page - 1) * pageSize;
 
     const blocks = await this.prisma.block.findMany({
       where,
       orderBy: { ts: orderByDirection },
       take: pageSize,
+      skip: skip, // Skip based on the page number
     });
 
     const lastTs = blocks.length ? blocks[blocks.length - 1].ts : 0;

@@ -19,6 +19,10 @@ const prisma = new PrismaClient();
 function generateRandomHash() {
   return crypto.randomBytes(16).toString('hex');
 }
+function getRandomSource() {
+  const sources = ['ETH_MAINNET', 'POLYGON_MAINNET', 'BSC_MAINNET'];
+  return sources[Math.floor(Math.random() * sources.length)]; 
+}
 
 // Function to generate a random Ethereum address in the format 'eip155:<address>'
 function generateRandomEthAddress() {
@@ -79,7 +83,7 @@ async function main() {
 
       tx.setType(0); // Assuming type 0 for INIT_DID
       tx.setCategory('INIT_DID');
-      tx.setSource(generateRandomEthAddress());
+      tx.setSource(getRandomSource());
       tx.setRecipientsList([
         generateRandomEthAddress(),
         generateRandomEthAddress(),

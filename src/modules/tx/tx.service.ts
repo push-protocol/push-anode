@@ -12,9 +12,11 @@ export class TxService {
     startTime: number,
     direction: string,
     pageSize: number,
+    page: number = 1, // Default page number is 1
     category?: string,
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
+    const skip = (page - 1) * pageSize;
 
     const where = {
       ...(category && { category }),
@@ -35,6 +37,7 @@ export class TxService {
         ts: orderByDirection,
       },
       take: pageSize,
+      skip, // Skip records based on the page number
     });
 
     const blocks = await this.groupTransactionsByBlock(transactions);
@@ -54,18 +57,20 @@ export class TxService {
     startTime: number,
     direction: string,
     pageSize: number,
+    page: number = 1, // Default page number is 1
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
     const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
+    const skip = (page - 1) * pageSize;
 
     const countQuery = Prisma.sql`
-    SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
-    AND jsonb_path_exists(
-      recipients,
-      ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
-    )
-  `;
+  SELECT COUNT(*) FROM "Transaction"
+  WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+  AND jsonb_path_exists(
+    recipients,
+    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+  )
+`;
 
     // Execute the total count query
     const totalTransactionsResult =
@@ -79,18 +84,18 @@ export class TxService {
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
     const fetchQuery = Prisma.sql`
-    SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
-    AND jsonb_path_exists(
-      recipients,
-      ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
-    )
-    ORDER BY ts ${Prisma.raw(orderByDirection)}
-    LIMIT ${Prisma.raw(pageSize.toString())}
-  `;
+  SELECT * FROM "Transaction"
+  WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+  AND jsonb_path_exists(
+    recipients,
+    ${Prisma.raw(`'$.recipients[*] ? (@.address == "${recipientAddress}")'`)}
+  )
+  ORDER BY ts ${Prisma.raw(orderByDirection)}
+  LIMIT ${Prisma.raw(pageSize.toString())}
+  OFFSET ${Prisma.raw(skip.toString())} -- Skip based on the page number
+`;
 
-    const transactions =
-      await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
+    const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
 
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
