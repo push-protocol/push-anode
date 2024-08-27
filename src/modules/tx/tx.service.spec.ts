@@ -70,6 +70,7 @@ describe('TxService', () => {
         1722512552.001,
         'desc',
         10,
+        1,
         'category1',
       );
 

@@ -46,15 +46,18 @@ export class RpcService {
     direction?: string,
     pageSize?: number,
     category?: string,
+    page?: number, // Add page parameter here
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
     const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
 
     return this.txService.push_getTransactions(
       finalStartTime,
       finalDirection,
       finalPageSize,
+      finalPage,
       category,
     );
   }
