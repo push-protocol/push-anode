@@ -14,7 +14,7 @@ CREATE TABLE "Transaction" (
     "txn_hash" VARCHAR(128) NOT NULL,
     "block_hash" VARCHAR(128) NOT NULL,
     "category" VARCHAR(32) NOT NULL,
-    "source" VARCHAR(64) NOT NULL,
+    "sender" VARCHAR(64) NOT NULL,
     "status" VARCHAR(64) NOT NULL,
     "from" VARCHAR(128) NOT NULL,
     "recipients" JSONB NOT NULL,
