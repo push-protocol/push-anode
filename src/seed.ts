@@ -83,7 +83,7 @@ async function main() {
 
       tx.setType(0); // Assuming type 0 for INIT_DID
       tx.setCategory('INIT_DID');
-      tx.setSource(getRandomSource());
+      tx.setSender(getRandomSource());
       tx.setRecipientsList([
         generateRandomEthAddress(),
         generateRandomEthAddress(),
@@ -118,7 +118,7 @@ async function main() {
         txn_hash: generateRandomHash(),
         block_hash: blockHash,
         category: txObj.getTx()?.getCategory() ?? '',
-        source: txObj.getTx()?.getSource() ?? '',
+        sender: txObj.getTx()?.getSender() ?? '',
         status: 'SUCCESS',
         from: generateRandomEthAddress(),
         recipients: {

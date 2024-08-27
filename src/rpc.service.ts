@@ -170,4 +170,8 @@ export class RpcService {
       };
     }
   }
+
+  async health(): Promise<{ success: string }> {
+    return { success: 'ok' };
+  }
 }

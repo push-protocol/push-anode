@@ -5,7 +5,7 @@ export interface TransactionDTO {
   ts: number;
   blockHash: string;
   category: string;
-  source: string;
+  sender: string;
   status: string;
   from: string;
   recipients: Prisma.JsonValue;

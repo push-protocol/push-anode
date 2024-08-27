@@ -145,7 +145,7 @@ export class TxService {
           ts: tx.ts,
           blockHash: tx.block_hash,
           category: tx.category,
-          source: tx.source,
+          sender: tx.sender,
           status: tx.status,
           from: tx.from,
           recipients: tx.recipients,
@@ -214,7 +214,7 @@ export class TxService {
           ts: tx.ts,
           blockHash: tx.block_hash,
           category: tx.category,
-          source: tx.source,
+          sender: tx.sender,
           status: tx.status,
           from: tx.from,
           recipients: tx.recipients,
@@ -227,4 +227,6 @@ export class TxService {
 
     return Array.from(blocksMap.values());
   }
+
+  async push_Health(): Promise<void> {}
 }

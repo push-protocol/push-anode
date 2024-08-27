@@ -50,7 +50,7 @@ describe('BlockService', () => {
           txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
-          source: 'source1',
+          sender: 'sender1',
           status: 'SUCCESS',
           from: 'from',
           recipients: {} as Prisma.JsonValue, // Correct type for JSON fields
@@ -97,7 +97,7 @@ describe('BlockService', () => {
           txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
-          source: 'source1',
+          sender: 'source1',
           status: 'SUCCESS',
           from: 'from',
           recipients: {} as Prisma.JsonValue,
