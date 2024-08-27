@@ -45,8 +45,8 @@ export class RpcService {
     startTime?: number,
     direction?: string,
     pageSize?: number,
-    category?: string,
     page?: number, // Add page parameter here
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
