@@ -19,15 +19,28 @@ const prisma = new PrismaClient();
 function generateRandomHash() {
   return crypto.randomBytes(16).toString('hex');
 }
-function getRandomSource() {
-  const sources = ['ETH_MAINNET', 'POLYGON_MAINNET', 'BSC_MAINNET'];
-  return sources[Math.floor(Math.random() * sources.length)]; 
+
+function generateRandomEthAddressV2() {
+  const ethAddress = '0x' + crypto.randomBytes(20).toString('hex');
+  return ethAddress;
 }
 
-// Function to generate a random Ethereum address in the format 'eip155:<address>'
-function generateRandomEthAddress() {
+const chainIdSourceMap: { [key: number]: string } = {
+  1: 'ETH_MAINNET',
+  56: 'BSC_MAINNET',
+  137: 'POLYGON_MAINNET',
+};
+
+function generateFullCaipEthAddress(chainId?: number): string {
+  // If chainId is not provided, get a random one from the available keys
+  if (!chainId) {
+    const chainIds = Object.keys(chainIdSourceMap);
+    const randomIndex = Math.floor(Math.random() * chainIds.length);
+    chainId = Number(chainIds[randomIndex]);
+  }
+
   const ethAddress = '0x' + crypto.randomBytes(20).toString('hex');
-  return `eip155:${ethAddress}`;
+  return `eip155:${chainId}:${ethAddress}`;
 }
 
 function bufferToHex(buffer: Uint8Array): string {
@@ -72,7 +85,7 @@ async function main() {
     for (let j = 1; j <= 20; j++) {
       // Create InitDid message
       const initDid = new InitDid();
-      initDid.setDid(generateRandomEthAddress());
+      initDid.setDid(generateRandomEthAddressV2());
       initDid.setMasterpubkey(generateRandomHash());
       initDid.setDerivedkeyindex(j);
       initDid.setDerivedpubkey(generateRandomHash());
@@ -81,12 +94,18 @@ async function main() {
       // Create Transaction message
       const tx = new Transaction();
 
+      const senderCaipAddress = generateFullCaipEthAddress(); // Randomly generated CAIP-10 address with chainId
+      const chainId = Number(senderCaipAddress.split(':')[1]);
+      const source = chainIdSourceMap[chainId];
+
+      tx.setSender(source);
+
       tx.setType(0); // Assuming type 0 for INIT_DID
       tx.setCategory('INIT_DID');
-      tx.setSender(getRandomSource());
+      tx.setSender(senderCaipAddress);
       tx.setRecipientsList([
-        generateRandomEthAddress(),
-        generateRandomEthAddress(),
+        generateFullCaipEthAddress(),
+        generateFullCaipEthAddress(),
       ]);
       tx.setData(initDid.serializeBinary());
       tx.setSalt(crypto.randomBytes(16));
@@ -120,7 +139,7 @@ async function main() {
         category: txObj.getTx()?.getCategory() ?? '',
         sender: txObj.getTx()?.getSender() ?? '',
         status: 'SUCCESS',
-        from: generateRandomEthAddress(),
+        from: senderCaipAddress,
         recipients: {
           recipients:
             txObj
@@ -140,12 +159,12 @@ async function main() {
 
     // Create Signers
     const signer1 = new Signer();
-    signer1.setNode(generateRandomEthAddress());
+    signer1.setNode(generateRandomEthAddressV2());
     signer1.setRole(Role.VALIDATOR);
     signer1.setSig(generateRandomHash());
 
     const signer2 = new Signer();
-    signer2.setNode(generateRandomEthAddress());
+    signer2.setNode(generateRandomEthAddressV2());
     signer2.setRole(Role.ATTESTER);
     signer2.setSig(generateRandomHash());
 
