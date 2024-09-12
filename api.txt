@@ -1,5 +1,2 @@
-1. What is the format of Receiptid. how to get the source of recepinet ?
-2. Health check API
 3. Accepted or reject ?
 4. How to get consesus chain icon ?
-5. 
