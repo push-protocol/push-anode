@@ -163,6 +163,73 @@ export class TxService {
     };
   }
 
+  async push_getTransactionsByUser(
+    userAddress: string,
+    startTime: number,
+    direction: string,
+    pageSize: number,
+    page: number = 1,
+  ): Promise<PaginatedBlocksResponse> {
+    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
+    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
+    const skip = (page - 1) * pageSize;
+
+    console.log(userAddress);
+
+    // Corrected count query to directly inject the userAddress
+    const countQuery = Prisma.sql`
+    SELECT COUNT(*) FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
+    AND (
+      "sender" = ${userAddress} OR
+      jsonb_path_exists(
+        recipients,
+        '$.recipients[*] ? (@.address == "${userAddress}")'
+      )
+    )
+  `;
+
+    // Execute the total count query
+    const totalTransactionsResult =
+      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
+
+    const totalTransactions =
+      totalTransactionsResult.length > 0
+        ? Number(totalTransactionsResult[0].count)
+        : 0;
+
+    const totalPages = Math.ceil(totalTransactions / pageSize);
+
+    // Corrected fetch query to directly inject the userAddress
+    const fetchQuery = Prisma.sql`
+    SELECT * FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
+    AND (
+      "sender" = ${userAddress} OR
+      jsonb_path_exists(
+        recipients,
+        '$.recipients[*] ? (@.address == "${userAddress}")'
+      )
+    )
+    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    LIMIT ${pageSize}
+    OFFSET ${skip}
+  `;
+
+    const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
+
+    const blocks = await this.groupTransactionsByBlock(transactions);
+    const lastTs = transactions.length
+      ? transactions[transactions.length - 1].ts
+      : 0;
+
+    return {
+      blocks,
+      lastTs,
+      totalPages,
+    };
+  }
+
   async getTotalTransactions(): Promise<number> {
     return this.prisma.transaction.count();
   }
@@ -226,71 +293,6 @@ export class TxService {
     }
 
     return Array.from(blocksMap.values());
-  }
-
-  async push_getTransactionsByUser(
-    userAddress: string,
-    startTime: number,
-    direction: string,
-    pageSize: number,
-    page: number = 1,
-  ): Promise<PaginatedBlocksResponse> {
-    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
-    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
-    const skip = (page - 1) * pageSize;
-
-    // Corrected count query to avoid raw string interpolation for ASC/DESC
-    const countQuery = Prisma.sql`
-    SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
-    AND (
-      "sender" = ${userAddress} OR
-      jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == ${userAddress})'
-      )
-    )
-  `;
-
-    // Execute the total count query
-    const totalTransactionsResult =
-      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
-
-    const totalTransactions =
-      totalTransactionsResult.length > 0
-        ? Number(totalTransactionsResult[0].count)
-        : 0;
-
-    const totalPages = Math.ceil(totalTransactions / pageSize);
-
-    // Corrected fetch query to avoid raw string interpolation for ASC/DESC
-    const fetchQuery = Prisma.sql`
-    SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
-    AND (
-      "sender" = ${userAddress} OR
-      jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == ${userAddress})'
-      )
-    )
-    ORDER BY ts ${Prisma.sql([orderByDirection])}
-    LIMIT ${pageSize}
-    OFFSET ${skip}
-  `;
-
-    const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
-
-    const blocks = await this.groupTransactionsByBlock(transactions);
-    const lastTs = transactions.length
-      ? transactions[transactions.length - 1].ts
-      : 0;
-
-    return {
-      blocks,
-      lastTs,
-      totalPages,
-    };
   }
 
   async push_Health(): Promise<void> {}
