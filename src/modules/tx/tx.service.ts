@@ -233,21 +233,21 @@ export class TxService {
     startTime: number,
     direction: string,
     pageSize: number,
-    page: number = 1, // Default page number is 1
+    page: number = 1,
   ): Promise<PaginatedBlocksResponse> {
     const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
     const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
     const skip = (page - 1) * pageSize;
 
-    // Query to count total transactions where the user is either the sender or in the recipients list
+    // Corrected count query to avoid raw string interpolation for ASC/DESC
     const countQuery = Prisma.sql`
     SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
     AND (
-      "sender" = ${Prisma.raw(userAddress)} OR
+      "sender" = ${userAddress} OR
       jsonb_path_exists(
         recipients,
-        ${Prisma.raw(`'$.recipients[*] ? (@.address == "${userAddress}")'`)}
+        '$.recipients[*] ? (@.address == ${userAddress})'
       )
     )
   `;
@@ -263,20 +263,20 @@ export class TxService {
 
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
-    // Query to fetch the transactions based on sender or recipient
+    // Corrected fetch query to avoid raw string interpolation for ASC/DESC
     const fetchQuery = Prisma.sql`
     SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
     AND (
-      "sender" = ${Prisma.raw(userAddress)} OR
+      "sender" = ${userAddress} OR
       jsonb_path_exists(
         recipients,
-        ${Prisma.raw(`'$.recipients[*] ? (@.address == "${userAddress}")'`)}
+        '$.recipients[*] ? (@.address == ${userAddress})'
       )
     )
-    ORDER BY ts ${Prisma.raw(orderByDirection)}
-    LIMIT ${Prisma.raw(pageSize.toString())}
-    OFFSET ${Prisma.raw(skip.toString())} -- Skip based on the page number
+    ORDER BY ts ${Prisma.sql([orderByDirection])}
+    LIMIT ${pageSize}
+    OFFSET ${skip}
   `;
 
     const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);

@@ -172,7 +172,7 @@ export class RpcService {
   }
 
   async getTransactionsByUser(
-    userId: string,
+    userAddress: string,
     startTime?: number,
     direction?: string,
     pageSize?: number,
@@ -184,7 +184,7 @@ export class RpcService {
     const finalPage = page ?? 1;
 
     return this.txService.push_getTransactionsByUser(
-      userId,
+      userAddress,
       finalStartTime,
       finalDirection,
       finalPageSize,
