@@ -228,5 +228,70 @@ export class TxService {
     return Array.from(blocksMap.values());
   }
 
+  async push_getTransactionsByUser(
+    userAddress: string,
+    startTime: number,
+    direction: string,
+    pageSize: number,
+    page: number = 1, // Default page number is 1
+  ): Promise<PaginatedBlocksResponse> {
+    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
+    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
+    const skip = (page - 1) * pageSize;
+
+    // Query to count total transactions where the user is either the sender or in the recipients list
+    const countQuery = Prisma.sql`
+    SELECT COUNT(*) FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    AND (
+      "sender" = ${Prisma.raw(userAddress)} OR
+      jsonb_path_exists(
+        recipients,
+        ${Prisma.raw(`'$.recipients[*] ? (@.address == "${userAddress}")'`)}
+      )
+    )
+  `;
+
+    // Execute the total count query
+    const totalTransactionsResult =
+      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
+
+    const totalTransactions =
+      totalTransactionsResult.length > 0
+        ? Number(totalTransactionsResult[0].count)
+        : 0;
+
+    const totalPages = Math.ceil(totalTransactions / pageSize);
+
+    // Query to fetch the transactions based on sender or recipient
+    const fetchQuery = Prisma.sql`
+    SELECT * FROM "Transaction"
+    WHERE ts ${Prisma.raw(comparisonOperator)} ${Prisma.raw(startTime.toString())}
+    AND (
+      "sender" = ${Prisma.raw(userAddress)} OR
+      jsonb_path_exists(
+        recipients,
+        ${Prisma.raw(`'$.recipients[*] ? (@.address == "${userAddress}")'`)}
+      )
+    )
+    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    LIMIT ${Prisma.raw(pageSize.toString())}
+    OFFSET ${Prisma.raw(skip.toString())} -- Skip based on the page number
+  `;
+
+    const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
+
+    const blocks = await this.groupTransactionsByBlock(transactions);
+    const lastTs = transactions.length
+      ? transactions[transactions.length - 1].ts
+      : 0;
+
+    return {
+      blocks,
+      lastTs,
+      totalPages,
+    };
+  }
+
   async push_Health(): Promise<void> {}
 }

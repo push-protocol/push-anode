@@ -171,6 +171,27 @@ export class RpcService {
     }
   }
 
+  async getTransactionsByUser(
+    userId: string,
+    startTime?: number,
+    direction?: string,
+    pageSize?: number,
+    page?: number,
+  ): Promise<PaginatedBlocksResponse> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1;
+
+    return this.txService.push_getTransactionsByUser(
+      userId,
+      finalStartTime,
+      finalDirection,
+      finalPageSize,
+      finalPage,
+    );
+  }
+
   async health(): Promise<{ success: string }> {
     return { success: 'ok' };
   }
