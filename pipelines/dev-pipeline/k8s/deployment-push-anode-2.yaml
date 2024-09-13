@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: 'Deployment'
+metadata:
+  name: 'push-anode-2'
+  namespace: 'apps'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 'push-anode-2'
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+  template:
+    metadata:
+      labels:
+        app: 'push-anode-2'
+    spec:
+      containers:
+        - name: 'push-anode-2'
+          image: 'us-central1-docker.pkg.dev/push-dev-apps/ar-d-services-base-usce1/push-anode-image:init'
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          livenessProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 3000
+          readinessProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 3000
+      serviceAccountName: sa-apps
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: 'true'
