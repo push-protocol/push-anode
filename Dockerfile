@@ -38,5 +38,5 @@ WORKDIR /app
 COPY --from=builder /app .
 RUN npm install --production
 ENV DATABASE_URL=postgres://push-anode:tUT2uGTq0SglqkXO@localhost:5432/push-anode
-EXPOSE 3000
+EXPOSE 3000 5432
 CMD ["sh","-c","su postgres -c 'sh /docker-entrypoint-initdb.d/init.sh' && node dist/main"]
