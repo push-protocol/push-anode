@@ -3,6 +3,7 @@ import { NestjsJsonRpcModule, TransportType } from '@klerick/nestjs-json-rpc';
 import { BlockModule } from './modules/block/block.module';
 import { TxModule } from './modules/tx/tx.module';
 import { RpcService } from './rpc.service'; // Import your new RPC service
+import { HealthController } from './modules/health/health.controller';
 
 @Module({
   imports: [
@@ -14,5 +15,6 @@ import { RpcService } from './rpc.service'; // Import your new RPC service
     }),
   ],
   providers: [RpcService],
+  controllers: [HealthController],
 })
 export class AppModule {}
