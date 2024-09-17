@@ -9,7 +9,6 @@ import {
   Vote,
   TxAttestorData,
   Signer,
-  Role,
 } from './generated/block_pb';
 // Adjust the path if needed
 
@@ -89,7 +88,6 @@ async function main() {
       initDid.setMasterpubkey(generateRandomHash());
       initDid.setDerivedkeyindex(j);
       initDid.setDerivedpubkey(generateRandomHash());
-      initDid.setEncderivedprivkey(generateRandomHash());
 
       // Create Transaction message
       const tx = new Transaction();
@@ -98,10 +96,9 @@ async function main() {
       const chainId = Number(senderCaipAddress.split(':')[1]);
       const source = chainIdSourceMap[chainId];
 
-      tx.setSender(source);
-
       tx.setType(0); // Assuming type 0 for INIT_DID
       tx.setCategory('INIT_DID');
+      tx.setSender(source);
       tx.setSender(senderCaipAddress);
       tx.setRecipientsList([
         generateFullCaipEthAddress(),
@@ -159,13 +156,9 @@ async function main() {
 
     // Create Signers
     const signer1 = new Signer();
-    signer1.setNode(generateRandomEthAddressV2());
-    signer1.setRole(Role.VALIDATOR);
     signer1.setSig(generateRandomHash());
 
     const signer2 = new Signer();
-    signer2.setNode(generateRandomEthAddressV2());
-    signer2.setRole(Role.ATTESTER);
     signer2.setSig(generateRandomHash());
 
     block.setSignersList([signer1, signer2]);

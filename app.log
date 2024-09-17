@@ -55,3 +55,16 @@
 {"level":"info","message":"JsonRpcController {/rpc}:","timestamp":"2024-09-13T09:27:11.376Z"}
 {"level":"info","message":"Mapped {/rpc, POST} route","timestamp":"2024-09-13T09:27:11.376Z"}
 {"level":"info","message":"Nest application successfully started","timestamp":"2024-09-13T09:27:11.456Z"}
+{"level":"info","message":"Starting Nest application...","timestamp":"2024-09-17T14:01:19.620Z"}
+{"level":"info","message":"NestjsJsonRpcModule dependencies initialized","timestamp":"2024-09-17T14:01:20.014Z"}
+{"level":"info","message":"BlockModule dependencies initialized","timestamp":"2024-09-17T14:01:20.026Z"}
+{"level":"info","message":"TxModule dependencies initialized","timestamp":"2024-09-17T14:01:20.026Z"}
+{"level":"info","message":"RouterModule dependencies initialized","timestamp":"2024-09-17T14:01:20.027Z"}
+{"level":"info","message":"UtilModule dependencies initialized","timestamp":"2024-09-17T14:01:20.027Z"}
+{"level":"info","message":"HttpTransportModule dependencies initialized","timestamp":"2024-09-17T14:01:20.028Z"}
+{"level":"info","message":"AppModule dependencies initialized","timestamp":"2024-09-17T14:01:20.028Z"}
+{"level":"info","message":"HealthController {/health}:","timestamp":"2024-09-17T14:01:20.046Z"}
+{"level":"info","message":"Mapped {/health, GET} route","timestamp":"2024-09-17T14:01:20.048Z"}
+{"level":"info","message":"JsonRpcController {/rpc}:","timestamp":"2024-09-17T14:01:20.048Z"}
+{"level":"info","message":"Mapped {/rpc, POST} route","timestamp":"2024-09-17T14:01:20.049Z"}
+{"level":"info","message":"Nest application successfully started","timestamp":"2024-09-17T14:01:20.167Z"}
