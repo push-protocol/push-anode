@@ -71,7 +71,7 @@ function recursivelyConvertToJSON(obj: any): any {
 }
 
 async function main() {
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 100; i++) {
     const blockHash = generateRandomHash(); // Generate random block hash
 
     // Create a Protobuf Block
@@ -81,7 +81,7 @@ async function main() {
     const transactionsData = [];
     const transactions: TransactionObj[] = [];
 
-    for (let j = 1; j <= 20; j++) {
+    for (let j = 1; j <= 100; j++) {
       // Create InitDid message
       const initDid = new InitDid();
       initDid.setDid(generateRandomEthAddressV2());
