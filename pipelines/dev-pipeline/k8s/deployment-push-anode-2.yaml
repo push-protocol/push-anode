@@ -25,14 +25,14 @@ spec:
           ports:
             - containerPort: 3000
           livenessProbe:
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 5
             failureThreshold: 3
             httpGet:
               path: /health
               port: 3000
           readinessProbe:
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 3
             httpGet:
