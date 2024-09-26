@@ -33,3 +33,13 @@ model Transaction {
   @@index([block_hash], name: "transaction_block_hash_idx")
   @@index([recipients(ops: JsonbPathOps)], type: Gin)
 }
+model dsetClient {
+  id            Int    @id @default(autoincrement())
+  queue_name    String
+  target_node_id String
+  target_node_url String
+  target_offset BigInt @default(0)
+  state         Int    @default(1)
+
+  @@unique([queue_name, target_node_id])
+}

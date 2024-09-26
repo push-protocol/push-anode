@@ -102,7 +102,7 @@ export class BlockService {
       where: { block_hash: block.block_hash },
     });
 
-    let responseBlock: BlockWithTransactions = {
+    const responseBlock: BlockWithTransactions = {
       blockHash: block.block_hash,
       blockSize: block.data.length,
       blockData: block.data.toString('hex'),

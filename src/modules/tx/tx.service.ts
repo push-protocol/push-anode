@@ -74,7 +74,7 @@ export class TxService {
 
     // Execute the total count query
     const totalTransactionsResult =
-      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
+      await this.prisma.$queryRaw<{ count: bigint }[]>(countQuery);
 
     const totalTransactions =
       totalTransactionsResult.length > 0
