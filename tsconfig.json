@@ -15,8 +15,9 @@
     "strictNullChecks": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["jest"] // Only include Jest types
+    "sourceMap": true, // Enable source maps for better error tracking
+    "types": ["jest", "node"], // Add 'node' types for compatibility
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/generated/**/*"], // Ensure generated files are included
   "exclude": ["node_modules", "dist"]
 }

@@ -1,10 +1,10 @@
-import { Service } from 'typedi';
 import { Logger } from 'winston';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WinstonUtil } from '../../utils/winstonUtil';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
+import { Injectable } from '@nestjs/common';
 
-@Service()
+@Injectable()
 export class QueueClientHelper {
   private log: Logger = WinstonUtil.newLog(QueueClientHelper);
 

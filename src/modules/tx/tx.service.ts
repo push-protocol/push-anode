@@ -43,7 +43,7 @@ export class TxService {
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
-      : 0;
+      : BigInt(0);
 
     return {
       blocks,
@@ -100,7 +100,7 @@ export class TxService {
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
-      : 0;
+      : BigInt(0);
 
     return {
       blocks,
@@ -117,7 +117,7 @@ export class TxService {
     });
 
     if (!tx) {
-      return { blocks: [], lastTs: 0, totalPages: 0 };
+      return { blocks: [], lastTs: BigInt(0), totalPages: 0 };
     }
 
     const block = await this.prisma.block.findUnique({
@@ -125,7 +125,7 @@ export class TxService {
     });
 
     if (!block) {
-      return { blocks: [], lastTs: 0, totalPages: 0 };
+      return { blocks: [], lastTs: BigInt(0), totalPages: 0 };
     }
 
     const totalNumberOfTxns = await this.prisma.transaction.count({

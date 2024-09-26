@@ -12,6 +12,15 @@ export class RpcService {
     private readonly txService: TxService,
   ) {}
 
+  bigIntReplacer(key: string, value: any) {
+    // If the value is a BigInt, convert it to a string
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // Otherwise, return the value as-is
+    return value;
+  }
+
   async getBlocks(
     startTime?: number,
     direction?: string,
@@ -25,13 +34,15 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
-    return this.blockService.push_getBlocksByTime(
+    const result = await this.blockService.push_getBlocksByTime(
       finalStartTime,
       finalDirection,
       finalShowDetails,
       finalPageSize,
       finalPage, // Pass the page parameter
     );
+
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async getBlockByHash(
@@ -158,14 +169,14 @@ export class RpcService {
 
       return {
         blocks: [],
-        lastTs: 0,
+        lastTs: BigInt(0),
         totalPages: 0,
       };
     } catch (error) {
       console.error('Error during search:', error);
       return {
         blocks: [],
-        lastTs: 0,
+        lastTs: BigInt(0),
         totalPages: 0,
       };
     }

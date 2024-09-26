@@ -37,7 +37,7 @@ export class BlockService {
       skip: skip, // Skip based on the page number
     });
 
-    const lastTs = blocks.length ? blocks[blocks.length - 1].ts : 0;
+    const lastTs = blocks.length ? blocks[blocks.length - 1].ts : BigInt(0);
 
     const responseBlocks: BlockWithTransactions[] = await Promise.all(
       blocks.map(async (block: Block): Promise<BlockWithTransactions> => {
@@ -78,6 +78,8 @@ export class BlockService {
         };
       }),
     );
+    
+  
 
     return {
       blocks: responseBlocks,
@@ -95,7 +97,7 @@ export class BlockService {
     });
 
     if (!block) {
-      return { blocks: [], lastTs: 0, totalPages: 0 };
+      return { blocks: [], lastTs: BigInt(0), totalPages: 0 };
     }
 
     const totalNumberOfTxns = await this.prisma.transaction.count({

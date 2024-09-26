@@ -6,7 +6,7 @@ export interface BlockWithTransactions {
   blockSize: number;
   blockData: string;
   blockDataAsJson: Prisma.JsonValue;
-  ts: number;
+  ts: bigint;
   transactions: TransactionDTO[];
   totalNumberOfTxns: number;
 }

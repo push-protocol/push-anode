@@ -1,12 +1,12 @@
-import { Service } from 'typedi';
 import { Logger } from 'winston';
 import { WinstonUtil } from '../../utils/winstonUtil';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QItem } from '../../messaging/types/queue-types';
 import { ArchiveNodeService } from '../archive/archive-node.service';
 import { RpcUtils } from '../../utils/rpcUtil';
+import { Injectable } from '@nestjs/common';
 
-@Service()
+@Injectable()
 export class QueueClient {
   private log: Logger = WinstonUtil.newLog(QueueClient);
   private consumer!: ArchiveNodeService; // Consumer is QueueServer in your case
@@ -66,12 +66,11 @@ export class QueueClient {
           lastOffset, // Pass `lastOffset` as a number
         );
 
-        console.log("\n\n\n")
+        console.log('\n\n\n');
 
         console.log(reply);
 
         console.log('\n\n\n');
-
 
         if (!reply || reply.items?.length === 0) {
           break;

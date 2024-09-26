@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 export interface TransactionDTO {
   txnHash: string;
-  ts: number;
+  ts: bigint;
   blockHash: string;
   category: string;
   sender: string;
