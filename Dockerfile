@@ -41,6 +41,15 @@ RUN npm install ts-node --production
 # Environment variable for Prisma to connect to the DB
 ENV DATABASE_URL=postgres://push-anode:tUT2uGTq0SglqkXO@localhost:5432/push-anode
 
+
+ENV VALIDATOR_CONTRACT_ADDRESS=0x18Fa54e372e7F5993b2233449e8ab2086eCA3fAE
+ENV VALIDATOR_RPC_ENDPOINT=https://proportionate-multi-sanctuary.ethereum-sepolia.quiknode.pro/fe3638bd884a34c0aa6c85ce2cd62ef54b0d8442/
+ENV VALIDATOR_RPC_NETWORK=11155111
+ENV VALIDATOR_PRIVATE_KEY_FILE=validator_eth_key.json
+ENV VALIDATOR_PRIVATE_KEY_PASS=test
+ENV LOG_DIR=./config
+ENV CONFIG_DIR=./docker/a1
+
 # Expose the necessary ports
 EXPOSE 3000 5432
 
