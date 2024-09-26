@@ -35,7 +35,7 @@ describe('TxService', () => {
     it('should return transactions grouped by block', async () => {
       const mockTransactions = [
         {
-          ts: Math.floor(Date.now() / 1000), // ts as number (Unix timestamp)
+          ts: BigInt(Math.floor(Date.now() / 1000)), // ts as number (Unix timestamp)
           txn_hash: 'txnHash1',
           block_hash: 'blockHash1',
           category: 'category1',
@@ -48,7 +48,7 @@ describe('TxService', () => {
           data: Buffer.from('data1'),
         },
         {
-          ts: Math.floor(Date.now() / 1000),
+          ts: BigInt(Math.floor(Date.now() / 1000)),
           txn_hash: 'txnHash2',
           block_hash: 'blockHash1',
           category: 'category1',
@@ -83,7 +83,7 @@ describe('TxService', () => {
   describe('push_getTransactionByHash', () => {
     it('should return transaction by hash', async () => {
       const mockTransaction = {
-        ts: Math.floor(Date.now() / 1000),
+        ts: BigInt(Math.floor(Date.now() / 1000)),
         txn_hash: 'txnHash2',
         block_hash: 'blockHash1',
         category: 'category1',

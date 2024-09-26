@@ -40,13 +40,13 @@ describe('BlockService', () => {
         {
           block_hash: 'hash1',
           data: Buffer.from('data1'),
-          ts: Math.floor(Date.now() / 1000),
+          ts: BigInt(Math.floor(Date.now() / 1000)),
           data_as_json: {} as Prisma.JsonValue,
         }, // ts as number
       ];
       const mockTransactions = [
         {
-          ts: Math.floor(Date.now() / 1000), // ts as number
+          ts: BigInt(Math.floor(Date.now() / 1000)), // ts as number
           txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
@@ -89,11 +89,11 @@ describe('BlockService', () => {
         block_hash: 'hash1',
         data: Buffer.from('data1'),
         data_as_json: {} as Prisma.JsonValue,
-        ts: Math.floor(Date.now() / 1000),
+        ts: BigInt(Math.floor(Date.now() / 1000)),
       };
       const mockTransactions = [
         {
-          ts: Math.floor(Date.now() / 1000),
+          ts: BigInt(Math.floor(Date.now() / 1000)),
           txn_hash: 'txnHash1',
           block_hash: 'hash1',
           category: 'category1',
