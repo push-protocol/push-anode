@@ -50,6 +50,5 @@ CMD ["sh", "-c", "\
     sleep 10 && \
     npx prisma generate && \
     npx prisma migrate deploy && \
-    npx ts-node src/seed.ts && \
     node dist/main \
     "]
