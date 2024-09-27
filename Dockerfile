@@ -36,7 +36,7 @@ COPY --from=builder /app .
 
 # Install only production dependencies
 RUN npm install --production
-RUN npm install ts-node --production
+RUN npm install -g ts-node
 
 # Environment variable for Prisma to connect to the DB
 ENV DATABASE_URL=postgres://push-anode:tUT2uGTq0SglqkXO@localhost:5432/push-anode
@@ -59,5 +59,5 @@ CMD ["sh", "-c", "\
     sleep 10 && \
     npx prisma generate && \
     npx prisma migrate deploy && \
-    node dist/main \
+    ts-node src/main.ts \
     "]
