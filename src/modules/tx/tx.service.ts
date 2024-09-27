@@ -174,8 +174,6 @@ export class TxService {
     const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
     const skip = (page - 1) * pageSize;
 
-    console.log(userAddress);
-
     // Corrected count query to directly inject the userAddress
     const countQuery = Prisma.sql`
     SELECT COUNT(*) FROM "Transaction"
@@ -221,7 +219,7 @@ export class TxService {
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
-      : 0;
+      : BigInt(0);
 
     return {
       blocks,
