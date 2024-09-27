@@ -206,13 +206,14 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1;
 
-    return this.txService.push_getTransactionsByUser(
+    const result = await this.txService.push_getTransactionsByUser(
       userAddress,
       finalStartTime,
       finalDirection,
       finalPageSize,
       finalPage,
     );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async health(): Promise<{ success: string }> {
