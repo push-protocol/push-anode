@@ -49,7 +49,7 @@ export class RpcService {
     blockHash: string,
     showDetails = true,
   ): Promise<PaginatedBlocksResponse> {
-    const result = this.blockService.push_getBlockByHash(
+    const result = await this.blockService.push_getBlockByHash(
       blockHash,
       showDetails,
     );
