@@ -49,7 +49,11 @@ export class RpcService {
     blockHash: string,
     showDetails = true,
   ): Promise<PaginatedBlocksResponse> {
-    return this.blockService.push_getBlockByHash(blockHash, showDetails);
+    const result = this.blockService.push_getBlockByHash(
+      blockHash,
+      showDetails,
+    );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async getTxs(
@@ -64,13 +68,14 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
-    return this.txService.push_getTransactions(
+    const result = this.txService.push_getTransactions(
       finalStartTime,
       finalDirection,
       finalPageSize,
       finalPage,
       category,
     );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async getTxsByRecipient(
@@ -85,17 +90,19 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
-    return this.txService.push_getTransactionsByRecipient(
+    const result = this.txService.push_getTransactionsByRecipient(
       recipientAddress,
       finalStartTime,
       finalDirection,
       finalPageSize,
       finalPage, // Pass the page parameter
     );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async getTxByHash(transactionHash: string): Promise<PaginatedBlocksResponse> {
-    return this.txService.push_getTransactionByHash(transactionHash);
+    const result = this.txService.push_getTransactionByHash(transactionHash);
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
   async getCounts(): Promise<{
@@ -153,18 +160,22 @@ export class RpcService {
         blockResult.status === 'fulfilled' &&
         blockResult.value.blocks.length > 0
       ) {
-        return blockResult.value;
+        return JSON.parse(
+          JSON.stringify(blockResult.value, this.bigIntReplacer),
+        );
       }
 
       if (txResult.status === 'fulfilled' && txResult.value.blocks.length > 0) {
-        return txResult.value;
+        return JSON.parse(JSON.stringify(txResult.value, this.bigIntReplacer));
       }
 
       if (
         recipientResult.status === 'fulfilled' &&
         recipientResult.value.blocks.length > 0
       ) {
-        return recipientResult.value;
+        return JSON.parse(
+          JSON.stringify(recipientResult.value, this.bigIntReplacer),
+        );
       }
 
       return {
