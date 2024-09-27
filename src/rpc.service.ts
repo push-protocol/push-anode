@@ -68,7 +68,7 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
-    const result = this.txService.push_getTransactions(
+    const result = await this.txService.push_getTransactions(
       finalStartTime,
       finalDirection,
       finalPageSize,
@@ -90,7 +90,7 @@ export class RpcService {
     const finalPageSize = pageSize ?? 10;
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
-    const result = this.txService.push_getTransactionsByRecipient(
+    const result = await this.txService.push_getTransactionsByRecipient(
       recipientAddress,
       finalStartTime,
       finalDirection,
@@ -101,7 +101,8 @@ export class RpcService {
   }
 
   async getTxByHash(transactionHash: string): Promise<PaginatedBlocksResponse> {
-    const result = this.txService.push_getTransactionByHash(transactionHash);
+    const result =
+      await this.txService.push_getTransactionByHash(transactionHash);
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
