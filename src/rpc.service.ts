@@ -157,6 +157,10 @@ export class RpcService {
         [blockSearch, txSearch, recipientSearch],
       );
 
+            console.log(blockResult);
+            console.log(txResult);
+            console.log(recipientResult);
+
       if (
         blockResult.status === 'fulfilled' &&
         blockResult.value.blocks.length > 0
@@ -179,18 +183,29 @@ export class RpcService {
         );
       }
 
-      return {
-        blocks: [],
-        lastTs: BigInt(0),
-        totalPages: 0,
-      };
+
+      return JSON.parse(
+        JSON.stringify(
+          {
+            blocks: [],
+            lastTs: BigInt(0),
+            totalPages: 0,
+          },
+          this.bigIntReplacer,
+        ),
+      );
     } catch (error) {
       console.error('Error during search:', error);
-      return {
-        blocks: [],
-        lastTs: BigInt(0),
-        totalPages: 0,
-      };
+      return JSON.parse(
+        JSON.stringify(
+          {
+            blocks: [],
+            lastTs: BigInt(0),
+            totalPages: 0,
+          },
+          this.bigIntReplacer,
+        ),
+      );
     }
   }
 
