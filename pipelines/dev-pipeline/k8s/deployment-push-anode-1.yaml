@@ -27,26 +27,67 @@ spec:
           resources:
             requests:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "1000m"
             limits:
               memory: "1Gi"
-              cpu: "1"
+              cpu: "1200m"
           livenessProbe:
-            initialDelaySeconds: 120
+            initialDelaySeconds: 60
             periodSeconds: 5
             failureThreshold: 3
-            timeoutSeconds: 20
+            timeoutSeconds: 60
             httpGet:
               path: /health
               port: 3000
           readinessProbe:
-            initialDelaySeconds: 120
+            initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 3
-            timeoutSeconds: 20
+            timeoutSeconds: 60
             httpGet:
               path: /health
               port: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: DATABASE_URL
+            - name: VALIDATOR_CONTRACT_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: VALIDATOR_CONTRACT_ADDRESS
+            - name: VALIDATOR_RPC_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: VALIDATOR_RPC_ENDPOINT
+            - name: VALIDATOR_RPC_NETWORK
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: VALIDATOR_RPC_NETWORK
+            - name: VALIDATOR_PRIVATE_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: VALIDATOR_PRIVATE_KEY_FILE
+            - name: VALIDATOR_PRIVATE_KEY_PASS
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: VALIDATOR_PRIVATE_KEY_PASS
+            - name: LOG_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: LOG_DIR
+             - name: CONFIG_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-1-apps-configmaps
+                  key: CONFIG_DIR  
       serviceAccountName: sa-apps
       nodeSelector:
         iam.gke.io/gke-metadata-server-enabled: 'true'
