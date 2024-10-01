@@ -84,10 +84,10 @@ spec:
                   name: anode-2-apps-configmaps
                   key: LOG_DIR
             - name: CONFIG_DIR
-            valueFrom:
-              configMapKeyRef:
-                name: anode-2-apps-configmaps
-                key: CONFIG_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: anode-2-apps-configmaps
+                  key: CONFIG_DIR
       serviceAccountName: sa-apps
       nodeSelector:
         iam.gke.io/gke-metadata-server-enabled: 'true'
