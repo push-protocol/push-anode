@@ -51,42 +51,42 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: DATABASE_URL
             - name: VALIDATOR_CONTRACT_ADDRESS
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: VALIDATOR_CONTRACT_ADDRESS
             - name: VALIDATOR_RPC_ENDPOINT
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: VALIDATOR_RPC_ENDPOINT
             - name: VALIDATOR_RPC_NETWORK
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: VALIDATOR_RPC_NETWORK
             - name: VALIDATOR_PRIVATE_KEY_FILE
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: VALIDATOR_PRIVATE_KEY_FILE
             - name: VALIDATOR_PRIVATE_KEY_PASS
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: VALIDATOR_PRIVATE_KEY_PASS
             - name: LOG_DIR
               valueFrom:
                 configMapKeyRef:
-                  name: anode-1-apps-configmaps
+                  name: anode-1-apps-configmap
                   key: LOG_DIR
             - name: CONFIG_DIR
             valueFrom:
               configMapKeyRef:
-                name: anode-1-apps-configmaps
+                name: anode-1-apps-configmap
                 key: CONFIG_DIR  
       serviceAccountName: sa-apps
       nodeSelector:
