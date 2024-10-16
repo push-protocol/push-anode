@@ -12,7 +12,7 @@ export class RpcService {
     private readonly txService: TxService,
   ) {}
 
-  bigIntReplacer(key: string, value: any) {
+  bigIntReplacer(key: string, value: bigint | string) {
     // If the value is a BigInt, convert it to a string
     if (typeof value === 'bigint') {
       return value.toString();
@@ -157,9 +157,9 @@ export class RpcService {
         [blockSearch, txSearch, recipientSearch],
       );
 
-            console.log(blockResult);
-            console.log(txResult);
-            console.log(recipientResult);
+      console.log(blockResult);
+      console.log(txResult);
+      console.log(recipientResult);
 
       if (
         blockResult.status === 'fulfilled' &&
@@ -182,7 +182,6 @@ export class RpcService {
           JSON.stringify(recipientResult.value, this.bigIntReplacer),
         );
       }
-
 
       return JSON.parse(
         JSON.stringify(

@@ -252,12 +252,12 @@ export class TxService {
 
   async getDailyTransactions(): Promise<number> {
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    todayStart.setHours(0, 0, 0, 0); // Set time to midnight for today's start
 
     return this.prisma.transaction.count({
       where: {
         ts: {
-          gte: Math.floor(todayStart.getTime() / 1000),
+          gte: todayStart.getTime(),
         },
       },
     });

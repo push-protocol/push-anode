@@ -78,8 +78,6 @@ export class BlockService {
         };
       }),
     );
-    
-  
 
     return {
       blocks: responseBlocks,
@@ -88,7 +86,6 @@ export class BlockService {
     };
   }
 
-  
   async push_getBlockByHash(
     blockHash: string,
     showDetails: boolean = true,
