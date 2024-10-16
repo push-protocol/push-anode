@@ -23,7 +23,7 @@ export class ValidatorContractState implements OnModuleInit {
   public contractCli: ValidatorCtClient;
 
   public async onModuleInit() {
-    this.log.info('ValidatorContractState.onModuleInit()');
+    this.log.info('onModuleInit()');
 
     // Initialize contract factory and client
     this.contractFactory = new ContractClientFactory();
@@ -141,7 +141,6 @@ class ContractClientFactory {
     const file = fs.readFileSync(fileAbsolute, 'utf8');
     const json = JSON.parse(file);
     const abi = json.abi;
-    console.log(`abi size:`, abi.length);
     return abi;
   }
 
@@ -336,7 +335,6 @@ export class ValidatorCtClient {
         nodeApiBaseUrl: string,
       ) => {
         nodeApiBaseUrl = this.fixNodeUrl(nodeApiBaseUrl);
-        this.log.info('NodeAdded %o', arguments);
         this.log.info(
           'NodeAdded %s %s %s %s %s',
           ownerWallet,
@@ -365,7 +363,6 @@ export class ValidatorCtClient {
     this.contract.on(
       'NodeStatusChanged',
       (nodeWallet: string, nodeStatus: number, nodeTokens: number) => {
-        this.log.info('NodeStatusChanged', arguments);
         this.log.info('NodeStatusChanged', nodeWallet, nodeStatus, nodeTokens);
         const ni =
           this.vnodes.get(nodeWallet) ??

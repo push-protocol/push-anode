@@ -10,8 +10,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
 
   public async accept(item: QItem): Promise<boolean> {
     try {
-      console.log('Processing item:', item);
-
       // Deserialize the block data
       const bytes = Uint8Array.from(Buffer.from(item.object, 'hex'));
       const block = Block.deserializeBinary(bytes).toObject();
@@ -42,7 +40,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
       }
 
       // Insert block into the database
-
       await this.prisma.block.create({ data: blockData });
 
       // Insert transactions into the database
@@ -103,7 +100,9 @@ export class ArchiveNodeService implements Consumer<QItem> {
         continue;
       }
 
-      const txBytes = Uint8Array.from(Buffer.from(String(txObj.tx?.data || ''), 'hex'));
+      const txBytes = Uint8Array.from(
+        Buffer.from(String(txObj.tx?.data || ''), 'hex'),
+      );
       const transaction = TransactionObj.deserializeBinary(txBytes).toObject();
 
       const txData = {
