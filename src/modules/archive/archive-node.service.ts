@@ -33,6 +33,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
       const transactionsData = await this.prepareTransactionsData(
         block.txobjList,
         blockHash,
+        block.ts,
       );
       if (transactionsData.length === 0) {
         console.log('All transactions already exist, skipping block insert.');
@@ -90,6 +91,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
   private async prepareTransactionsData(
     txObjList: Block.AsObject['txobjList'],
     blockHash: string,
+    blockTs: number,
   ): Promise<any[]> {
     const transactionsData = [];
 
@@ -106,7 +108,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
       const transaction = TransactionObj.deserializeBinary(txBytes).toObject();
 
       const txData = {
-        ts: Date.now(),
+        ts: blockTs,
         txn_hash: txnHash,
         block_hash: blockHash,
         category: txObj.tx?.category || '',
