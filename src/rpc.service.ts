@@ -100,6 +100,28 @@ export class RpcService {
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
+  async getTxsBySender(
+    senderAddress: string,
+    startTime?: number,
+    direction?: string,
+    pageSize?: number,
+    page?: number, // Add page parameter here
+  ): Promise<PaginatedBlocksResponse> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
+
+    const result = await this.txService.push_getTransactionsBySender(
+      senderAddress,
+      finalStartTime,
+      finalDirection,
+      finalPageSize,
+      finalPage, // Pass the page parameter
+    );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
+
   async getTxByHash(transactionHash: string): Promise<PaginatedBlocksResponse> {
     const result =
       await this.txService.push_getTransactionByHash(transactionHash);

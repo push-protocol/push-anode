@@ -52,6 +52,10 @@ export class TxService {
     };
   }
 
+  /**
+   * Tx where recipientAddress is in recipients array
+   * @returns
+   */
   async push_getTransactionsByRecipient(
     recipientAddress: string,
     startTime: number,
@@ -68,13 +72,10 @@ export class TxService {
     const countQueryStr = `
     SELECT COUNT(*) FROM "Transaction"
     WHERE ts ${comparisonOperator} ${startTime}
-    AND (
-      jsonb_path_exists(
+    AND jsonb_path_exists(
         recipients,
         '$.recipients[*] ? (@.address == "${recipientAddress}")'
-      ) OR sender = '${recipientAddress}'
-    )
-  `;
+    )`;
 
     console.log('Count Query:', countQueryStr); // Log the count query
 
@@ -93,16 +94,83 @@ export class TxService {
     const fetchQueryStr = `
     SELECT * FROM "Transaction"
     WHERE ts ${comparisonOperator} ${startTime}
-    AND (
-      jsonb_path_exists(
+    AND jsonb_path_exists(
         recipients,
         '$.recipients[*] ? (@.address == "${recipientAddress}")'
-      ) OR sender = '${recipientAddress}'
     )
     ORDER BY ts ${orderByDirection}
     LIMIT ${pageSize}
     OFFSET ${skip} -- Skip based on the page number
   `;
+
+    console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
+
+    // Execute the fetch query
+    const transactions = await this.prisma.$queryRaw<Transaction[]>(
+      Prisma.sql([fetchQueryStr]),
+    );
+
+    const blocks = await this.groupTransactionsByBlock(transactions);
+
+    console.log('Transactions:', transactions);
+    console.log('Blocks:', blocks);
+
+    const lastTs = transactions.length
+      ? transactions[transactions.length - 1].ts
+      : BigInt(0);
+
+    return {
+      blocks,
+      lastTs,
+      totalPages,
+    };
+  }
+
+  /**
+   * Tx where senderAddress is the sender of Tx
+   * @returns
+   */
+  async push_getTransactionsBySender(
+    senderAddress: string,
+    startTime: number,
+    direction: string,
+    pageSize: number,
+    page: number = 1, // Default page number is 1
+  ): Promise<PaginatedBlocksResponse> {
+    const finalPage = page < 1 ? 1 : page; // Ensure the page is at least 1
+    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
+    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
+    const skip = (finalPage - 1) * pageSize;
+
+    // Construct the count query as a raw string to search within sender
+    const countQueryStr = `
+      SELECT COUNT(*) FROM "Transaction"
+      WHERE ts ${comparisonOperator} ${startTime}
+      AND sender = '${senderAddress}'
+    `;
+
+    console.log('Count Query:', countQueryStr); // Log the count query
+
+    // Execute the total count query
+    const totalTransactionsResult = await this.prisma.$queryRaw<
+      { count: bigint }[]
+    >(Prisma.sql([countQueryStr]));
+
+    const totalTransactions =
+      totalTransactionsResult.length > 0
+        ? Number(totalTransactionsResult[0].count)
+        : 0;
+    const totalPages = Math.ceil(totalTransactions / pageSize);
+
+    // Construct the fetch query as a raw string to search within sender
+    const fetchQueryStr = `
+      SELECT * FROM "Transaction"
+      WHERE ts ${comparisonOperator} ${startTime}
+      AND sender = '${senderAddress}'
+      ORDER BY ts ${orderByDirection}
+      LIMIT ${pageSize}
+      OFFSET ${skip} -- Skip based on the page number
+    `;
 
     console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
 
@@ -181,6 +249,10 @@ export class TxService {
     };
   }
 
+  /**
+   * Tx where sender is userAddress or recipientAddress is in recipients array
+   * @returns
+   */
   async push_getTransactionsByUser(
     userAddress: string,
     startTime: number,
@@ -207,7 +279,7 @@ export class TxService {
 
     // Execute the total count query
     const totalTransactionsResult =
-      await this.prisma.$queryRaw<{ count: BigInt }[]>(countQuery);
+      await this.prisma.$queryRaw<{ count: bigint }[]>(countQuery);
 
     const totalTransactions =
       totalTransactionsResult.length > 0
