@@ -250,7 +250,7 @@ export class TxService {
   }
 
   /**
-   * Tx where sender is userAddress or recipientAddress is in recipients array
+   * Tx where recipientAddress is in recipients array or sender is userAddress
    * @returns
    */
   async push_getTransactionsByUser(
@@ -258,55 +258,62 @@ export class TxService {
     startTime: number,
     direction: string,
     pageSize: number,
-    page: number = 1,
+    page: number = 1, // Default page number is 1
   ): Promise<PaginatedBlocksResponse> {
+    const finalPage = page < 1 ? 1 : page; // Ensure the page is at least 1
     const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
     const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
-    const skip = (page - 1) * pageSize;
+    const skip = (finalPage - 1) * pageSize;
 
-    // Corrected count query to directly inject the userAddress
-    const countQuery = Prisma.sql`
+    // Construct the count query as a raw string to search within recipients or sender
+    const countQueryStr = `
     SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
-    AND (
-      "sender" = ${userAddress} OR
-      jsonb_path_exists(
+    WHERE ts ${comparisonOperator} ${startTime}
+    AND ( jsonb_path_exists(
         recipients,
         '$.recipients[*] ? (@.address == "${userAddress}")'
-      )
-    )
-  `;
+        ) OR sender = '${userAddress}'
+    )`;
+
+    console.log('Count Query:', countQueryStr); // Log the count query
 
     // Execute the total count query
-    const totalTransactionsResult =
-      await this.prisma.$queryRaw<{ count: bigint }[]>(countQuery);
+    const totalTransactionsResult = await this.prisma.$queryRaw<
+      { count: bigint }[]
+    >(Prisma.sql([countQueryStr]));
 
     const totalTransactions =
       totalTransactionsResult.length > 0
         ? Number(totalTransactionsResult[0].count)
         : 0;
-
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
-    // Corrected fetch query to directly inject the userAddress
-    const fetchQuery = Prisma.sql`
+    // Construct the fetch query as a raw string to search within recipients or sender
+    const fetchQueryStr = `
     SELECT * FROM "Transaction"
-    WHERE ts ${Prisma.raw(comparisonOperator)} ${startTime}
-    AND (
-      "sender" = ${userAddress} OR
-      jsonb_path_exists(
+    WHERE ts ${comparisonOperator} ${startTime}
+    AND ( jsonb_path_exists(
         recipients,
         '$.recipients[*] ? (@.address == "${userAddress}")'
-      )
+        ) OR sender = '${userAddress}'
     )
-    ORDER BY ts ${Prisma.raw(orderByDirection)}
+    ORDER BY ts ${orderByDirection}
     LIMIT ${pageSize}
-    OFFSET ${skip}
+    OFFSET ${skip} -- Skip based on the page number
   `;
 
-    const transactions = await this.prisma.$queryRaw<Transaction[]>(fetchQuery);
+    console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
+
+    // Execute the fetch query
+    const transactions = await this.prisma.$queryRaw<Transaction[]>(
+      Prisma.sql([fetchQueryStr]),
+    );
 
     const blocks = await this.groupTransactionsByBlock(transactions);
+
+    console.log('Transactions:', transactions);
+    console.log('Blocks:', blocks);
+
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
       : BigInt(0);
