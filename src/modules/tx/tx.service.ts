@@ -8,191 +8,164 @@ import { Prisma, Transaction } from '@prisma/client';
 export class TxService {
   constructor(private prisma: PrismaService) {}
 
-  async push_getTransactions(
+  private buildWhereClause(
     startTime: number,
     direction: string,
-    pageSize: number,
-    page: number = 1, // Default page number is 1
     category?: string,
-  ): Promise<PaginatedBlocksResponse> {
-    const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
-    const skip = (page - 1) * pageSize;
+    recipientAddress?: string,
+    senderAddress?: string,
+    userAddress?: string,
+  ) {
+    const comparisonOperator = direction === 'ASC' ? 'gte' : 'lte';
 
-    const where = {
-      ...(category && { category }),
+    let where: Prisma.TransactionWhereInput = {
       ts: {
-        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
+        [comparisonOperator]: startTime,
       },
     };
 
-    const totalTransactions = await this.prisma.transaction.count({
-      where,
-    });
+    if (category) {
+      where = { ...where, category };
+    }
 
+    if (recipientAddress) {
+      where = {
+        ...where,
+        recipients: {
+          path: ['recipients'],
+          array_contains: [{ address: recipientAddress }],
+        },
+      };
+    }
+
+    if (senderAddress) {
+      where = { ...where, sender: senderAddress };
+    }
+
+    if (userAddress) {
+      where = {
+        ...where,
+        OR: [
+          { sender: userAddress },
+          {
+            recipients: {
+              path: ['recipients'],
+              array_contains: [{ address: userAddress }],
+            },
+          },
+        ],
+      };
+    }
+
+    return where;
+  }
+
+  private async paginateTransactions(
+    where: Prisma.TransactionWhereInput,
+    direction: string,
+    pageSize: number,
+    page: number,
+  ): Promise<{
+    transactions: Transaction[];
+    totalTransactions: number;
+    totalPages: number;
+  }> {
+    const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
+    const skip = (page - 1) * pageSize;
+
+    const totalTransactions = await this.prisma.transaction.count({ where });
     const totalPages = Math.ceil(totalTransactions / pageSize);
 
     const transactions = await this.prisma.transaction.findMany({
       where,
-      orderBy: {
-        ts: orderByDirection,
-      },
+      orderBy: { ts: orderByDirection },
       take: pageSize,
-      skip, // Skip records based on the page number
+      skip,
     });
+
+    return { transactions, totalTransactions, totalPages };
+  }
+
+  async push_getTransactions(
+    startTime: number,
+    direction: string,
+    pageSize: number,
+    page: number = 1,
+    category?: string,
+  ): Promise<PaginatedBlocksResponse> {
+    const where = this.buildWhereClause(startTime, direction, category);
+    const { transactions, totalPages } = await this.paginateTransactions(
+      where,
+      direction,
+      pageSize,
+      page,
+    );
 
     const blocks = await this.groupTransactionsByBlock(transactions);
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
       : BigInt(0);
 
-    return {
-      blocks,
-      lastTs,
-      totalPages,
-    };
+    return { blocks, lastTs, totalPages };
   }
 
-  /**
-   * Tx where recipientAddress is in recipients array
-   * @returns
-   */
   async push_getTransactionsByRecipient(
     recipientAddress: string,
     startTime: number,
     direction: string,
     pageSize: number,
-    page: number = 1, // Default page number is 1
+    page: number = 1,
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
-    const finalPage = page < 1 ? 1 : page; // Ensure the page is at least 1
-    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
-    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
-    const skip = (finalPage - 1) * pageSize;
-
-    // Construct the count query as a raw string to search within recipients or sender
-    const countQueryStr = `
-    SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${comparisonOperator} ${startTime}
-    AND jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == "${recipientAddress}")'
-    )`;
-
-    console.log('Count Query:', countQueryStr); // Log the count query
-
-    // Execute the total count query
-    const totalTransactionsResult = await this.prisma.$queryRaw<
-      { count: bigint }[]
-    >(Prisma.sql([countQueryStr]));
-
-    const totalTransactions =
-      totalTransactionsResult.length > 0
-        ? Number(totalTransactionsResult[0].count)
-        : 0;
-    const totalPages = Math.ceil(totalTransactions / pageSize);
-
-    // Construct the fetch query as a raw string to search within recipients or sender
-    const fetchQueryStr = `
-    SELECT * FROM "Transaction"
-    WHERE ts ${comparisonOperator} ${startTime}
-    AND jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == "${recipientAddress}")'
-    )
-    ORDER BY ts ${orderByDirection}
-    LIMIT ${pageSize}
-    OFFSET ${skip} -- Skip based on the page number
-  `;
-
-    console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
-
-    // Execute the fetch query
-    const transactions = await this.prisma.$queryRaw<Transaction[]>(
-      Prisma.sql([fetchQueryStr]),
+    const where = this.buildWhereClause(
+      startTime,
+      direction,
+      category,
+      recipientAddress,
+    );
+    const { transactions, totalPages } = await this.paginateTransactions(
+      where,
+      direction,
+      pageSize,
+      page,
     );
 
     const blocks = await this.groupTransactionsByBlock(transactions);
-
-    console.log('Transactions:', transactions);
-    console.log('Blocks:', blocks);
-
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
       : BigInt(0);
 
-    return {
-      blocks,
-      lastTs,
-      totalPages,
-    };
+    return { blocks, lastTs, totalPages };
   }
 
-  /**
-   * Tx where senderAddress is the sender of Tx
-   * @returns
-   */
   async push_getTransactionsBySender(
     senderAddress: string,
     startTime: number,
     direction: string,
     pageSize: number,
-    page: number = 1, // Default page number is 1
+    page: number = 1,
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
-    const finalPage = page < 1 ? 1 : page; // Ensure the page is at least 1
-    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
-    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
-    const skip = (finalPage - 1) * pageSize;
-
-    // Construct the count query as a raw string to search within sender
-    const countQueryStr = `
-      SELECT COUNT(*) FROM "Transaction"
-      WHERE ts ${comparisonOperator} ${startTime}
-      AND sender = '${senderAddress}'
-    `;
-
-    console.log('Count Query:', countQueryStr); // Log the count query
-
-    // Execute the total count query
-    const totalTransactionsResult = await this.prisma.$queryRaw<
-      { count: bigint }[]
-    >(Prisma.sql([countQueryStr]));
-
-    const totalTransactions =
-      totalTransactionsResult.length > 0
-        ? Number(totalTransactionsResult[0].count)
-        : 0;
-    const totalPages = Math.ceil(totalTransactions / pageSize);
-
-    // Construct the fetch query as a raw string to search within sender
-    const fetchQueryStr = `
-      SELECT * FROM "Transaction"
-      WHERE ts ${comparisonOperator} ${startTime}
-      AND sender = '${senderAddress}'
-      ORDER BY ts ${orderByDirection}
-      LIMIT ${pageSize}
-      OFFSET ${skip} -- Skip based on the page number
-    `;
-
-    console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
-
-    // Execute the fetch query
-    const transactions = await this.prisma.$queryRaw<Transaction[]>(
-      Prisma.sql([fetchQueryStr]),
+    const where = this.buildWhereClause(
+      startTime,
+      direction,
+      category,
+      undefined,
+      senderAddress,
+    );
+    const { transactions, totalPages } = await this.paginateTransactions(
+      where,
+      direction,
+      pageSize,
+      page,
     );
 
     const blocks = await this.groupTransactionsByBlock(transactions);
-
-    console.log('Transactions:', transactions);
-    console.log('Blocks:', blocks);
-
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
       : BigInt(0);
 
-    return {
-      blocks,
-      lastTs,
-      totalPages,
-    };
+    return { blocks, lastTs, totalPages };
   }
 
   async push_getTransactionByHash(
@@ -249,80 +222,35 @@ export class TxService {
     };
   }
 
-  /**
-   * Tx where recipientAddress is in recipients array or sender is userAddress
-   * @returns
-   */
   async push_getTransactionsByUser(
     userAddress: string,
     startTime: number,
     direction: string,
     pageSize: number,
-    page: number = 1, // Default page number is 1
+    page: number = 1,
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
-    const finalPage = page < 1 ? 1 : page; // Ensure the page is at least 1
-    const orderByDirection = direction === 'asc' ? 'ASC' : 'DESC';
-    const comparisonOperator = orderByDirection === 'ASC' ? '>=' : '<=';
-    const skip = (finalPage - 1) * pageSize;
-
-    // Construct the count query as a raw string to search within recipients or sender
-    const countQueryStr = `
-    SELECT COUNT(*) FROM "Transaction"
-    WHERE ts ${comparisonOperator} ${startTime}
-    AND ( jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == "${userAddress}")'
-        ) OR sender = '${userAddress}'
-    )`;
-
-    console.log('Count Query:', countQueryStr); // Log the count query
-
-    // Execute the total count query
-    const totalTransactionsResult = await this.prisma.$queryRaw<
-      { count: bigint }[]
-    >(Prisma.sql([countQueryStr]));
-
-    const totalTransactions =
-      totalTransactionsResult.length > 0
-        ? Number(totalTransactionsResult[0].count)
-        : 0;
-    const totalPages = Math.ceil(totalTransactions / pageSize);
-
-    // Construct the fetch query as a raw string to search within recipients or sender
-    const fetchQueryStr = `
-    SELECT * FROM "Transaction"
-    WHERE ts ${comparisonOperator} ${startTime}
-    AND ( jsonb_path_exists(
-        recipients,
-        '$.recipients[*] ? (@.address == "${userAddress}")'
-        ) OR sender = '${userAddress}'
-    )
-    ORDER BY ts ${orderByDirection}
-    LIMIT ${pageSize}
-    OFFSET ${skip} -- Skip based on the page number
-  `;
-
-    console.log('Fetch Query:', fetchQueryStr); // Log the fetch query
-
-    // Execute the fetch query
-    const transactions = await this.prisma.$queryRaw<Transaction[]>(
-      Prisma.sql([fetchQueryStr]),
+    const where = this.buildWhereClause(
+      startTime,
+      direction,
+      category,
+      undefined,
+      undefined,
+      userAddress,
+    );
+    const { transactions, totalPages } = await this.paginateTransactions(
+      where,
+      direction,
+      pageSize,
+      page,
     );
 
     const blocks = await this.groupTransactionsByBlock(transactions);
-
-    console.log('Transactions:', transactions);
-    console.log('Blocks:', blocks);
-
     const lastTs = transactions.length
       ? transactions[transactions.length - 1].ts
       : BigInt(0);
 
-    return {
-      blocks,
-      lastTs,
-      totalPages,
-    };
+    return { blocks, lastTs, totalPages };
   }
 
   async getTotalTransactions(): Promise<number> {
@@ -389,6 +317,4 @@ export class TxService {
 
     return Array.from(blocksMap.values());
   }
-
-  async push_Health(): Promise<void> {}
 }

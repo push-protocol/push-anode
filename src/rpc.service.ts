@@ -84,6 +84,7 @@ export class RpcService {
     direction?: string,
     pageSize?: number,
     page?: number, // Add page parameter here
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
@@ -96,6 +97,7 @@ export class RpcService {
       finalDirection,
       finalPageSize,
       finalPage, // Pass the page parameter
+      category,
     );
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
@@ -106,6 +108,7 @@ export class RpcService {
     direction?: string,
     pageSize?: number,
     page?: number, // Add page parameter here
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
@@ -118,6 +121,7 @@ export class RpcService {
       finalDirection,
       finalPageSize,
       finalPage, // Pass the page parameter
+      category,
     );
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
@@ -236,6 +240,7 @@ export class RpcService {
     direction?: string,
     pageSize?: number,
     page?: number,
+    category?: string,
   ): Promise<PaginatedBlocksResponse> {
     const finalStartTime = startTime ?? 0;
     const finalDirection = direction ?? 'DESC';
@@ -248,6 +253,7 @@ export class RpcService {
       finalDirection,
       finalPageSize,
       finalPage,
+      category,
     );
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
