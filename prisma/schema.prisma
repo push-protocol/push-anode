@@ -21,7 +21,7 @@ model Transaction {
   txn_hash     String @db.VarChar(128)
   block_hash   String @db.VarChar(128)
   category     String @db.VarChar(32)
-  sender       String @db.VarChar(64)
+  sender       String @db.VarChar(128)
   status       String @db.VarChar(64)
   from         String @db.VarChar(128)
   recipients   Json   @db.JsonB
