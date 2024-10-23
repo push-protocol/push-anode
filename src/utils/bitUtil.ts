@@ -1,4 +1,3 @@
-// @ts-ignore
 import bs58 from 'bs58'
 
 import { Coll } from './coll'

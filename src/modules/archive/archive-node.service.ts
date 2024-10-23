@@ -25,9 +25,15 @@ type Transaction = {
 };
 @Injectable()
 export class ArchiveNodeService implements Consumer<QItem> {
-  constructor(private readonly prisma: PrismaService) {}
+  valContractState: ValidatorContractState = new ValidatorContractState();
 
-  valContractState: ValidatorContractState;
+  async postConstruct() {
+    await this.valContractState.onModuleInit();
+  }
+  constructor(private readonly prisma: PrismaService) {
+    this.postConstruct()
+  }
+
   public async accept(item: QItem): Promise<boolean> {
     try {
       // Deserialize the block data
