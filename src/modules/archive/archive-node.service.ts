@@ -1,4 +1,4 @@
-import { Block, TransactionObj } from '../../generated/block_pb';
+import { Block } from '../../generated/block_pb';
 import { Consumer, QItem } from '../../messaging/types/queue-types';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -162,11 +162,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
         continue;
       }
 
-      const txBytes = Uint8Array.from(
-        Buffer.from(String(txObj.tx?.data || ''), 'hex'),
-      );
-      const transaction = TransactionObj.deserializeBinary(txBytes).toObject();
-
       const txData = {
         ts: blockTs,
         txn_hash: txnHash,
@@ -181,8 +176,8 @@ export class ArchiveNodeService implements Consumer<QItem> {
               address: recipient,
             })) || [],
         },
-        data: Buffer.from(txBytes), // Store binary data
-        data_as_json: this.recursivelyConvertToJSON(transaction), // Convert to JSON-compatible format
+        data: txObj.tx.data, // Store binary data
+        data_as_json: txObj,
         sig: txObj.tx?.signature,
       };
       transactionsData.push(txData);
