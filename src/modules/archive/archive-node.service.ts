@@ -105,7 +105,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
       const txBytes = Uint8Array.from(
         Buffer.from(String(txObj.tx?.data || ''), 'hex'),
       );
-      const transaction = TransactionObj.deserializeBinary(txBytes).toObject();
 
       const txData = {
         ts: blockTs,
@@ -122,7 +121,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
             })) || [],
         },
         data: Buffer.from(txBytes), // Store binary data
-        data_as_json: this.recursivelyConvertToJSON(transaction), // Convert to JSON-compatible format
+        data_as_json: txObj, // Convert to JSON-compatible format
         sig: txObj.tx?.signature,
       };
 
