@@ -1,4 +1,5 @@
 import StrUtil from './strUtil'
+import { Tuple } from './tuple'
 
 export class ChainUtil {
   static readonly ADDR_MAX = 64
