@@ -276,10 +276,13 @@ export class RpcService {
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
-  async putBlock(blocks: QItem[], signature: string) {
+  async putBlock(blocks: QItem[] | string, signature: string) {
     //TODO: for now, passing an array directly doesnt work, so for implemntation sake, i am passing comma separated hashes
     // will need to find a way to support array first
-    const result = await this.blockService.push_putBlock(blocks, signature);
+    if (typeof blocks == 'string') {
+      blocks = JSON.parse(blocks);
+    }
+    const result = await this.blockService.push_putBlock(blocks as QItem[], signature);
     console.log('Result:', result);
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
