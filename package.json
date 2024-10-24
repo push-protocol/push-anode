@@ -53,6 +53,7 @@
     "typescript-eslint": "^8.0.1"
   },
   "dependencies": {
+    "@ethersproject/transactions": "^5.7.0",
     "@klerick/nestjs-json-rpc": "^1.0.0",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.3",
@@ -78,6 +79,7 @@
     "ts-luxon": "^5.0.7-beta.0",
     "tweetnacl": "^1.0.3",
     "typedi": "^0.10.0",
+    "util": "^0.12.5",
     "winston": "^3.14.2",
     "ws": "^8.18.0"
   }
