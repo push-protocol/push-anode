@@ -3,6 +3,7 @@ import { RpcHandler } from '@klerick/nestjs-json-rpc';
 import { BlockService } from './modules/block/block.service';
 import { PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
 import { TxService } from './modules/tx/tx.service';
+import { QItem } from './messaging/types/queue-types';
 
 @RpcHandler()
 @Injectable()
@@ -260,5 +261,26 @@ export class RpcService {
 
   async health(): Promise<{ success: string }> {
     return { success: 'ok' };
+  }
+
+  async putBlockHash(hashes: string | string[], signature: string) {
+    //TODO: for now, passing an array directly doesnt work, so for implemntation sake, i am passing comma separated hashes
+    // will need to find a way to support array first
+    if (typeof hashes == 'string') {
+      hashes = JSON.parse(hashes);
+    }
+    const result = await this.blockService.push_putBlockHash(
+      hashes as string[],
+      signature,
+    );
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
+
+  async putBlock(blocks: QItem[], signature: string) {
+    //TODO: for now, passing an array directly doesnt work, so for implemntation sake, i am passing comma separated hashes
+    // will need to find a way to support array first
+    const result = await this.blockService.push_putBlock(blocks, signature);
+    console.log('Result:', result);
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 }

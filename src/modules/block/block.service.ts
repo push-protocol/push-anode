@@ -3,6 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
+import { QItem } from '../../messaging/types/queue-types';
+import { ArchiveNodeService } from '../archive/archive-node.service';
 
 @Injectable()
 export class BlockService {
@@ -141,5 +143,81 @@ export class BlockService {
 
   async getTotalBlocks(): Promise<number> {
     return this.prisma.block.count();
+  }
+
+  async push_putBlockHash(hashes: string[], signature: string) {
+    try {
+      // TODO: Add signature validation
+      console.log('Input hashes:', hashes);
+      console.log('signature:', signature);
+
+      if (!Array.isArray(hashes) || hashes.length === 0) {
+        throw new Error(
+          'Invalid hashes input: Expected non-empty array of strings',
+        );
+      }
+
+      const blocks = await this.prisma.block.findMany({
+        where: {
+          block_hash: {
+            in: hashes,
+          },
+        },
+      });
+
+      if (!blocks || blocks.length === 0) {
+        return {
+          result: hashes.map((hash) => ({
+            hash,
+            status: 'NOT_SENT',
+          })),
+        };
+      }
+
+      const foundHashesSet = new Set(blocks.map((block) => block.block_hash));
+      console.log('Found hashes set:', foundHashesSet); // Debug found hashes
+
+      const statusArray = hashes.map((hash) => ({
+        hash,
+        status: foundHashesSet.has(hash) ? 'SENT' : 'NOT_SENT',
+      }));
+
+      const response = {
+        result: statusArray,
+      };
+
+      console.log('Returning response:', response); // Debug final response
+      return response;
+    } catch (error) {
+      console.error('Error in push_putBlockHash:', error);
+      return {
+        result: [],
+      };
+    }
+  }
+
+  async push_putBlock(blocks: QItem[], signature: string) {
+    // TODO: add signature validation
+    console.log('signature:', signature);
+    if (blocks.length === 0) {
+      return [];
+    } else {
+      const result = await Promise.all(
+        blocks.map(async (block) => {
+          try {
+            if (!block.object) {
+              throw new Error('Block object is missing');
+            }
+            const prisma = new PrismaService();
+            const res = await new ArchiveNodeService(prisma).accept(block);
+            if (res) return 'SUCCESS';
+            else return 'FAIL';
+          } catch (error) {
+            return { block, status: 'FAIL', error: error.message };
+          }
+        }),
+      );
+      return result;
+    }
   }
 }
