@@ -3,8 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
-import { QItem } from '../../messaging/types/queue-types';
 import { ArchiveNodeService } from '../archive/archive-node.service';
+import { BitUtil } from '../../utils/bitUtil';
+import { BlockUtil } from '../../utils/blockUtil';
 
 @Injectable()
 export class BlockService {
@@ -196,7 +197,7 @@ export class BlockService {
     }
   }
 
-  async push_putBlock(blocks: QItem[], signature: string) {
+  async push_putBlock(blocks: string[], signature: string) {
     // TODO: add signature validation
     console.log('signature:', signature);
     if (blocks.length === 0) {
@@ -205,11 +206,13 @@ export class BlockService {
       const result = await Promise.all(
         blocks.map(async (block) => {
           try {
-            if (!block.object) {
-              throw new Error('Block object is missing');
-            }
             const prisma = new PrismaService();
-            const res = await new ArchiveNodeService(prisma).accept(block);
+            const mb = BitUtil.base16ToBytes(block as string);
+            const parsedBlock = BlockUtil.parseBlock(mb);
+            const res = await new ArchiveNodeService(prisma).handleBlock(
+              parsedBlock,
+              mb,
+            );
             if (res) return 'SUCCESS';
             else return 'FAIL';
           } catch (error) {

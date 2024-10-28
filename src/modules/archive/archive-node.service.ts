@@ -31,7 +31,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
     await this.valContractState.onModuleInit();
   }
   constructor(private readonly prisma: PrismaService) {
-    this.postConstruct()
+    this.postConstruct();
   }
 
   public async accept(item: QItem): Promise<boolean> {
@@ -39,7 +39,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
       // Deserialize the block data
       const bytes = Uint8Array.from(Buffer.from(item.object, 'hex'));
       const deserializedBlock = Block.deserializeBinary(bytes);
-      const block = deserializedBlock.toObject();
 
       // Block validation //
       // validate the hash
@@ -54,6 +53,19 @@ export class ArchiveNodeService implements Consumer<QItem> {
         );
       }
       // validate the signature
+      return await this.handleBlock(deserializedBlock, bytes);
+    } catch (error) {
+      console.log('Failed to process block:', error);
+      return false;
+    }
+  }
+
+  public async handleBlock(
+    deserializedBlock: Block,
+    blockBytes: Uint8Array,
+  ): Promise<boolean> {
+    try {
+      const block = deserializedBlock.toObject();
       if (!(await this.validateBlock(deserializedBlock))) {
         throw new Error('Block validation failed');
       }
@@ -68,7 +80,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
       const blockData = {
         block_hash: blockHash,
         data_as_json: this.recursivelyConvertToJSON(block), // Convert to JSON-compatible format
-        data: Buffer.from(bytes), // Store the binary data
+        data: Buffer.from(blockBytes), // Store the binary data
         ts: block.ts,
       };
 
@@ -91,7 +103,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
       console.log('Block and transactions inserted:', blockHash);
       return true;
     } catch (error) {
-      console.log('Failed to process block:', error);
+      console.error('Failed to process block:', error);
       return false;
     }
   }
