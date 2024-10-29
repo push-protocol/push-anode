@@ -167,39 +167,28 @@ export class BlockService {
       });
 
       if (!blocks || blocks.length === 0) {
-        return {
-          result: hashes.map((hash) => ({
-            hash,
-            status: 'NOT_SENT',
-          })),
-        };
+        return [];
       }
 
       const foundHashesSet = new Set(blocks.map((block) => block.block_hash));
       console.log('Found hashes set:', foundHashesSet); // Debug found hashes
 
-      const statusArray = hashes.map((hash) => ({
-        hash,
-        status: foundHashesSet.has(hash) ? 'SENT' : 'NOT_SENT',
-      }));
+      const statusArray = hashes.map((hash) => {
+        return foundHashesSet.has(hash) ? 'SEND' : 'DO_NOT_SEND';
+      });
 
-      const response = {
-        result: statusArray,
-      };
-
-      console.log('Returning response:', response); // Debug final response
-      return response;
+      console.log('Returning response:', statusArray); // Debug final response
+      return statusArray;
     } catch (error) {
       console.error('Error in push_putBlockHash:', error);
-      return {
-        result: [],
-      };
+      return [];
     }
   }
 
   async push_putBlock(blocks: string[], signature: string) {
     // TODO: add signature validation
     console.log('signature:', signature);
+    console.log('blocks:', blocks);
     if (blocks.length === 0) {
       return [];
     } else {
@@ -213,10 +202,10 @@ export class BlockService {
               parsedBlock,
               mb,
             );
-            if (res) return 'SUCCESS';
-            else return 'FAIL';
+            if (res) return { status: 'SUCCESS' };
+            else return { status: 'REJECTED', reason: 'duplicate' };
           } catch (error) {
-            return { block, status: 'FAIL', error: error.message };
+            return { status: 'REJECTED', reason: error.message };
           }
         }),
       );
