@@ -20,7 +20,7 @@ model Transaction {
   ts           BigInt @default(0) @map("ts") // Changed to BigInt
   txn_hash     String @db.VarChar(128)
   block_hash   String @db.VarChar(128)
-  category     String @db.VarChar(32)
+  category     String @db.VarChar(128)
   sender       String @db.VarChar(128)
   status       String @db.VarChar(64)
   from         String @db.VarChar(128)
