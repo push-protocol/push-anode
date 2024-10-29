@@ -190,7 +190,7 @@ export class BlockService {
     console.log('signature:', signature);
     console.log('blocks:', blocks);
     if (blocks.length === 0) {
-      return [];
+      return {result: []};
     } else {
       const result = await Promise.all(
         blocks.map(async (block) => {
@@ -209,7 +209,7 @@ export class BlockService {
           }
         }),
       );
-      return result;
+      return {result: result};
     }
   }
 }
