@@ -209,7 +209,7 @@ export class BlockService {
           }
         }),
       );
-      return {result: result};
+      return result;
     }
   }
 }
