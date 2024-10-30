@@ -1,4 +1,8 @@
-import { Block } from '../../generated/block_pb';
+import {
+  Block,
+  TransactionObj,
+  Transaction as Tx,
+} from '../../generated/block_pb';
 import { Consumer, QItem } from '../../messaging/types/queue-types';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -31,7 +35,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
     await this.valContractState.onModuleInit();
   }
   constructor(private readonly prisma: PrismaService) {
-    this.postConstruct()
+    this.postConstruct();
   }
 
   public async accept(item: QItem): Promise<boolean> {
@@ -74,7 +78,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
 
       // Prepare transaction data for insertion
       const transactionsData = await this.prepareTransactionsData(
-        block.txobjList,
+        deserializedBlock.getTxobjList(),
         blockHash,
         block.ts,
       );
@@ -149,36 +153,38 @@ export class ArchiveNodeService implements Consumer<QItem> {
 
   // TODO: remove from or sender its redundant
   private async prepareTransactionsData(
-    txObjList: Block.AsObject['txobjList'],
+    txObjList: Array<TransactionObj>,
     blockHash: string,
     blockTs: number,
   ): Promise<Transaction[]> {
     const transactionsData = [];
 
     for (const txObj of txObjList) {
-      const txnHash = this.getTransactionHash(txObj);
+      const tx = txObj.getTx();
+      const txnHash = this.getTransactionHash(tx);
       if (await this.isTransactionAlreadyStored(txnHash)) {
         console.log('Transaction already exists, skipping:', txnHash);
         continue;
       }
 
+      const txJsonObj = txObj.toObject();
       const txData = {
         ts: blockTs,
         txn_hash: txnHash,
         block_hash: blockHash,
-        category: txObj.tx?.category || '',
-        sender: txObj.tx?.sender || '',
+        category: txJsonObj.tx.category || '',
+        sender: txJsonObj.tx?.sender || '',
         status: 'SUCCESS',
-        from: txObj.tx?.sender || '',
+        from: txJsonObj.tx?.sender || '',
         recipients: {
           recipients:
-            txObj.tx?.recipientsList.map((recipient) => ({
+            txJsonObj.tx?.recipientsList.map((recipient) => ({
               address: recipient,
             })) || [],
         },
-        data: txObj.tx.data, // Store binary data
-        data_as_json: txObj,
-        sig: txObj.tx?.signature,
+        data: txJsonObj.tx.data, // Store binary data
+        data_as_json: txJsonObj,
+        sig: txJsonObj.tx?.signature,
       };
       transactionsData.push(txData);
     }
@@ -186,8 +192,8 @@ export class ArchiveNodeService implements Consumer<QItem> {
     return transactionsData;
   }
 
-  private getTransactionHash(txObj: Block.AsObject['txobjList'][0]): string {
-    return ObjectHasher.hashToSha256(txObj);
+  private getTransactionHash(transaction: Tx): string {
+    return BlockUtil.hashTxAsHex(transaction.serializeBinary());
   }
 
   private async isTransactionAlreadyStored(txnHash: string): Promise<boolean> {
