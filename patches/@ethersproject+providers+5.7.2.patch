@@ -1,0 +1,31 @@
+diff --git a/node_modules/@ethersproject/providers/src.ts/base-provider.ts b/node_modules/@ethersproject/providers/src.ts/base-provider.ts
+index c9ef59f..f8def1a 100644
+--- a/node_modules/@ethersproject/providers/src.ts/base-provider.ts
++++ b/node_modules/@ethersproject/providers/src.ts/base-provider.ts
+@@ -1230,7 +1230,7 @@ export class BaseProvider extends Provider implements EnsProvider {
+             }
+ 
+         } else if (!value && this._poller) {
+-            clearInterval(this._poller);
++            clearInterval(this._poller as any);
+             this._poller = null;
+         }
+     }
+@@ -1247,7 +1247,7 @@ export class BaseProvider extends Provider implements EnsProvider {
+         this._pollingInterval = value;
+ 
+         if (this._poller) {
+-            clearInterval(this._poller);
++            clearInterval(this._poller as any);
+             this._poller = setInterval(() => { this.poll(); }, this._pollingInterval);
+         }
+     }
+@@ -1801,7 +1801,7 @@ export class BaseProvider extends Provider implements EnsProvider {
+ 
+                 // For block tags, if we are asking for a future block, we return null
+                 if (params.blockTag != null) {
+-                    if (blockNumber > this._emitted.block) { return null; }
++                    if (blockNumber as any> this._emitted.block) { return null; }
+                 }
+ 
+                 // Retry on the next block

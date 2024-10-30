@@ -84,7 +84,6 @@ async function main() {
     for (let j = 1; j <= 100; j++) {
       // Create InitDid message
       const initDid = new InitDid();
-      initDid.setDid(generateRandomEthAddressV2());
       initDid.setMasterpubkey(generateRandomHash());
       initDid.setDerivedkeyindex(j);
       initDid.setDerivedpubkey(generateRandomHash());
