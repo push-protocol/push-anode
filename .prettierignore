@@ -1,4 +1,7 @@
-node_modules/
-dist/
-src/utilz/
-src/modules/validator/
+node_modules
+public
+build
+dist
+# these files come from push-vnode; don't reformat them please;
+src/utilz/*.ts
+src/services/messaging-common/*.ts

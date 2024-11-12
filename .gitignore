@@ -6,3 +6,5 @@ app.log
 *.log
 app.log
 .idea
+build/
+log/
