@@ -3,6 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { EnvLoader } from './utilz/envLoader';
+
+EnvLoader.loadEnvOrFail();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
