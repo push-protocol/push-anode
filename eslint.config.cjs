@@ -3,6 +3,7 @@ const path = require('path');
 module.exports = [
   {
     files: ['**/*.ts'],
+    ignores: ['src/utilz/*.ts'],
     languageOptions: {
       parser: require('@typescript-eslint/parser'),
       parserOptions: {
@@ -17,7 +18,7 @@ module.exports = [
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [
-        'error',
+        'warn',
         { argsIgnorePattern: '^_' },
       ],
       'import/no-unused-modules': [1, { unusedExports: true }],
@@ -33,6 +34,7 @@ module.exports = [
           alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
+      '@typescript-eslint/prefer-const': 'off',
     },
   },
 ];

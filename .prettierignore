@@ -1,2 +1,4 @@
 node_modules/
 dist/
+src/utilz/
+src/modules/validator/

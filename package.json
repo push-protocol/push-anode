@@ -69,6 +69,7 @@
     "@types/bs58": "^4.0.4",
     "bs58": "^6.0.0",
     "crypto-js": "^4.2.0",
+    "ethereum-cryptography": "^3.0.0",
     "ethers": "^5.7.2",
     "google-protobuf": "^3.21.4",
     "node-schedule": "^2.1.1",

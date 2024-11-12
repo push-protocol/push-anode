@@ -33,8 +33,8 @@ export class BitUtil {
       target = new Buffer(add.length)
       src.copy(target, 0, 0, src.length)
     }
-    const length = Math.min(target.length, add.length)
-    for (let i = 0; i < length; ++i) {
+    var length = Math.min(target.length, add.length)
+    for (var i = 0; i < length; ++i) {
       target[i] = target[i] ^ add[i]
     }
     return target
@@ -78,6 +78,10 @@ export class BitUtil {
     return result;
   }
 
+  /**
+   * Returns a lowercase base16 string [0-9a-f]*
+   * @param arr array
+   */
   public static bytesToBase16(arr: Uint8Array): string {
     return Buffer.from(arr).toString('hex');
   }

@@ -1,8 +1,8 @@
 import schedule from 'node-schedule';
 import { Logger } from 'winston';
 
-import { EnvLoader } from '../../utils/envLoader';
-import { WinstonUtil } from '../../utils/winstonUtil';
+import { EnvLoader } from '../../utilz/envLoader';
+import { WinstonUtil } from '../../utilz/winstonUtil';
 import { QueueClient } from './queue-client.service';
 import { QueueClientHelper } from './queue-client-helper.service';
 import { PrismaService } from '../../prisma/prisma.service';

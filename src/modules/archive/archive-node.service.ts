@@ -6,9 +6,9 @@ import {
 import { Consumer, QItem } from '../../messaging/types/queue-types';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ObjectHasher } from '../../utils/objectHasher';
+import { ObjectHasher } from '../../utilz/objectHasher';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
-import { BlockUtil } from '../../utils/blockUtil';
+import { BlockUtil } from '../../utilz/blockUtil';
 import {
   InputJsonValue,
   InputJsonObject,

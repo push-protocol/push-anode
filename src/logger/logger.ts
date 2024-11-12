@@ -1,6 +1,6 @@
 import winston from 'winston';
-import { WinstonUtil } from '../utils/winstonUtil'; // Adjust based on your project structure
-import { EnvLoader } from '../utils/envLoader';
+import { WinstonUtil } from '../utilz/winstonUtil'; // Adjust based on your project structure
+import { EnvLoader } from '../utilz/envLoader';
 
 // Define custom log levels
 export const customLevels = {
