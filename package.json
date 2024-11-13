@@ -9,6 +9,7 @@
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev --name init",
     "prisma:deploy": "npx prisma migrate deploy",
+    "dev10001": "ts-node-dev --inspect=10001 --transpile-only ./src/main.ts",
     "start": "npx prisma generate && npx prisma migrate deploy && ts-node src/main.ts",
     "start:dev": "npx prisma generate && npx prisma migrate deploy && ts-node src/main.ts",
     "start:debug": "npx prisma generate && npx prisma migrate deploy && src/main.ts --debug --watch",
@@ -87,6 +88,7 @@
     "typedi": "^0.10.0",
     "util": "^0.12.5",
     "winston": "^3.14.2",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "ts-node-dev": "1.0.0-pre.44"
   }
 }

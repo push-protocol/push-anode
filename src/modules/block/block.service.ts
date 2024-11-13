@@ -4,12 +4,13 @@ import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
 import { ArchiveNodeService } from '../archive/archive-node.service';
-import { BitUtil } from '../../utils/bitUtil';
-import { BlockUtil } from '../../utils/blockUtil';
+import { BitUtil } from '../../utilz/bitUtil';
+import { BlockUtil } from '../../utilz/blockUtil';
 
 @Injectable()
 export class BlockService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+              private archiveNodeService: ArchiveNodeService) {}
 
   async push_getBlocksByTime(
     startTime: number,
@@ -146,70 +147,49 @@ export class BlockService {
     return this.prisma.block.count();
   }
 
-  async push_putBlockHash(hashes: string[], signature: string) {
-    try {
-      // TODO: Add signature validation
-      console.log('Input hashes:', hashes);
-      console.log('signature:', signature);
-
-      if (!Array.isArray(hashes) || hashes.length === 0) {
-        throw new Error(
-          'Invalid hashes input: Expected non-empty array of strings',
-        );
-      }
-
-      const blocks = await this.prisma.block.findMany({
-        where: {
-          block_hash: {
-            in: hashes,
-          },
-        },
-      });
-
-      if (!blocks || blocks.length === 0) {
-        return [];
-      }
-
-      const foundHashesSet = new Set(blocks.map((block) => block.block_hash));
-      console.log('Found hashes set:', foundHashesSet); // Debug found hashes
-
-      const statusArray = hashes.map((hash) => {
-        return foundHashesSet.has(hash) ? 'SEND' : 'DO_NOT_SEND';
-      });
-
-      console.log('Returning response:', statusArray); // Debug final response
-      return statusArray;
-    } catch (error) {
-      console.error('Error in push_putBlockHash:', error);
+  // TODO: Add signature validation
+  async push_putBlockHash(hashes: string[]) {
+    console.log('Input hashes:', hashes);
+    if (hashes.length === 0) {
       return [];
     }
+    const results = await this.prisma.$queryRaw<
+      Array<{ hash: string; is_present: number }>
+    >(
+      Prisma.sql`SELECT h.hash, CASE WHEN b.block_hash IS NOT NULL THEN 1 ELSE 0 END AS is_present
+    FROM unnest(${hashes}::text[]) AS h(hash)
+    LEFT JOIN "Block" b ON h.hash = b.block_hash`,
+    );
+    const statusArr = results.map((result) =>
+      result.is_present === 1 ? 'DO_NOT_SEND' : 'SEND',
+    );
+    console.log('Returning response:', statusArr); // Debug final response
+    return statusArr;
   }
 
-  async push_putBlock(blocks: string[], signature: string) {
-    // TODO: add signature validation
-    console.log('signature:', signature);
+  // TODO: add signature validation
+  async push_putBlock(blocks: string[]) {
     console.log('blocks:', blocks);
     if (blocks.length === 0) {
-      return {result: []};
-    } else {
-      const result = await Promise.all(
-        blocks.map(async (block) => {
-          try {
-            const prisma = new PrismaService();
-            const mb = BitUtil.base16ToBytes(block as string);
-            const parsedBlock = BlockUtil.parseBlock(mb);
-            const res = await new ArchiveNodeService(prisma).handleBlock(
-              parsedBlock,
-              mb,
-            );
-            if (res) return { status: 'SUCCESS' };
-            else return { status: 'REJECTED', reason: 'duplicate' };
-          } catch (error) {
-            return { status: 'REJECTED', reason: error.message };
-          }
-        }),
-      );
-      return result;
+      return { result: [] };
     }
+    let statusArr: { status: string; reason?: string }[] = [];
+    const prisma = new PrismaService();
+    for (let i = 0; i < blocks.length; i++) {
+      try {
+        let block = blocks[i];
+        const mb = BitUtil.base16ToBytes(block);
+        const parsedBlock = BlockUtil.parseBlock(mb);
+        const res = await this.archiveNodeService.handleBlock(parsedBlock, mb,);
+        if (!res) {
+          statusArr.push({ status: 'REJECTED', reason: 'duplicate' });
+          continue;
+        }
+        statusArr.push({ status: 'SUCCESS' });
+      } catch (error) {
+        statusArr.push({ status: 'REJECTED', reason: error.message });
+      }
+    }
+    return statusArr;
   }
 }

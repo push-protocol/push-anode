@@ -10,6 +10,7 @@ import {Logger} from 'winston'
 import {WinstonUtil} from '../../utilz/winstonUtil'
 import {URL} from 'url'
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Check } from '../../utilz/check';
 /*
 Validator contract abstraction.
 All blockchain goes here
@@ -46,6 +47,7 @@ export class ValidatorContractState implements OnModuleInit {
   }
 
   public getAllNodesMap(): Map<string, NodeInfo> {
+    Check.notNull(this.contractCli);
     return this.contractCli.vnodes
   }
 
