@@ -17,7 +17,7 @@ import { ValidatorModule } from './modules/validator/validator.module';
     ValidatorModule,
     NestjsJsonRpcModule.forRoot({
       path: 'rpc',
-      transport: TransportType.HTTP,
+      transport: TransportType.HTTP
     }),
   ],
   providers: [RpcService],

@@ -3,6 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
+import { ArchiveNodeService } from '../archive/archive-node.service';
+import { BitUtil } from '../../utils/bitUtil';
+import { BlockUtil } from '../../utils/blockUtil';
 
 @Injectable()
 export class BlockService {
@@ -141,5 +144,72 @@ export class BlockService {
 
   async getTotalBlocks(): Promise<number> {
     return this.prisma.block.count();
+  }
+
+  async push_putBlockHash(hashes: string[], signature: string) {
+    try {
+      // TODO: Add signature validation
+      console.log('Input hashes:', hashes);
+      console.log('signature:', signature);
+
+      if (!Array.isArray(hashes) || hashes.length === 0) {
+        throw new Error(
+          'Invalid hashes input: Expected non-empty array of strings',
+        );
+      }
+
+      const blocks = await this.prisma.block.findMany({
+        where: {
+          block_hash: {
+            in: hashes,
+          },
+        },
+      });
+
+      if (!blocks || blocks.length === 0) {
+        return [];
+      }
+
+      const foundHashesSet = new Set(blocks.map((block) => block.block_hash));
+      console.log('Found hashes set:', foundHashesSet); // Debug found hashes
+
+      const statusArray = hashes.map((hash) => {
+        return foundHashesSet.has(hash) ? 'SEND' : 'DO_NOT_SEND';
+      });
+
+      console.log('Returning response:', statusArray); // Debug final response
+      return statusArray;
+    } catch (error) {
+      console.error('Error in push_putBlockHash:', error);
+      return [];
+    }
+  }
+
+  async push_putBlock(blocks: string[], signature: string) {
+    // TODO: add signature validation
+    console.log('signature:', signature);
+    console.log('blocks:', blocks);
+    if (blocks.length === 0) {
+      return {result: []};
+    } else {
+      const result = await Promise.all(
+        blocks.map(async (block) => {
+          try {
+            const prisma = new PrismaService();
+            const mb = BitUtil.base16ToBytes(block as string);
+            const parsedBlock = BlockUtil.parseBlock(mb);
+            const res = await new ArchiveNodeService(prisma).handleBlock(
+              parsedBlock,
+              mb,
+            );
+            if (res) return { status: 'SUCCESS' };
+            else return { status: 'REJECTED', reason: 'duplicate' };
+          } catch (error) {
+            return { status: 'REJECTED', reason: error.message };
+          }
+        }),
+      );
+      return result;
+    }
   }
 }
