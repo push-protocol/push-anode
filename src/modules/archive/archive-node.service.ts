@@ -2,13 +2,13 @@ import {
   Block,
   TransactionObj,
   Transaction as Tx,
-} from '../../generated/block_pb';
+} from '../../generated/push/block_pb';
 import { Consumer, QItem } from '../../messaging/types/queue-types';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ObjectHasher } from '../../utilz/objectHasher';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
-import { BlockUtil } from '../../utilz/blockUtil';
+import { BlockUtil } from '../validator/blockUtil';
 import {
   InputJsonValue,
   InputJsonObject,
@@ -111,7 +111,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
   private async validateBlock(block: Block) {
     const validatorSet = new Set(this.valContractState.getAllNodesMap().keys());
     const validationPerBlock = this.valContractState.contractCli.valPerBlock;
-    const validationRes = await BlockUtil.checkBlockFinalized(
+    const validationRes = await BlockUtil.checkBlockAsSNode(
       block,
       validatorSet,
       validationPerBlock,

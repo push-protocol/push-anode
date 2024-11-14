@@ -5,7 +5,7 @@ import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
 import { ArchiveNodeService } from '../archive/archive-node.service';
 import { BitUtil } from '../../utilz/bitUtil';
-import { BlockUtil } from '../../utilz/blockUtil';
+import { BlockUtil } from '../validator/blockUtil';
 
 @Injectable()
 export class BlockService {

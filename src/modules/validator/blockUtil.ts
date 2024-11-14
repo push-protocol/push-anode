@@ -1,6 +1,3 @@
-import { Wallet } from 'ethers'
-import { Logger } from 'winston'
-
 import {
   AttestBlockResult,
   Block,
@@ -9,22 +6,25 @@ import {
   Transaction,
   TxAttestorData,
   TxValidatorData,
-  Vote
-} from '../generated/block_pb'
-import { ArrayUtil } from './arrayUtil'
-import { BitUtil } from './bitUtil'
-import { ChainUtil } from './chainUtil'
-import { Check } from './check'
-import { DateUtil } from './dateUtil'
-import { EnvLoader } from './envLoader'
-import { EthUtil } from './ethUtil'
-import { HashUtil } from './hashUtil'
-import { NumUtil } from './numUtil'
-import { SolUtil } from './solUtil'
-import { StarkNetUtil } from './starkNetUtil'
-import {StrUtil} from './strUtil'
-import { WinstonUtil } from './winstonUtil'
-import { PushSdkUtil } from './pushSdkUtil'
+  Vote, WalletToEncDerivedKey
+} from "../../generated/push/block_pb";
+import {EnvLoader} from "../../utilz/envLoader";
+import {HashUtil} from "../../utilz/hashUtil";
+import {BitUtil} from "../../utilz/bitUtil";
+import {StrUtil} from "../../utilz/strUtil";
+import {ChainUtil} from "../../utilz/chainUtil";
+import {Check} from "../../utilz/check";
+import {NumUtil} from "../../utilz/numUtil";
+import {EthUtil} from "../../utilz/ethUtil";
+import {Logger} from "winston";
+import {WinstonUtil} from "../../utilz/winstonUtil";
+import {DateUtil} from "../../utilz/dateUtil";
+import {Wallet} from "ethers";
+import {ArrayUtil} from "../../utilz/arrayUtil";
+import {SolUtil} from "../../utilz/solUtil";
+import {StarkNetUtil} from "../../utilz/starkNetUtil";
+import {PushSdkUtil, SigCheck} from "./pushSdkUtil";
+
 
 export class BlockUtil {
   public static readonly log: Logger = WinstonUtil.newLog(BlockUtil);
@@ -74,17 +74,21 @@ export class BlockUtil {
   }
 
   public static hashBlockAsHex(blockRaw: Uint8Array): string {
-    return BitUtil.bytesToBase16(HashUtil.sha256AsBytes(blockRaw));
+    return BitUtil.bytesToBase16(HashUtil.sha256AsBytesEx(blockRaw));
+  }
+
+  public static blockAsHex(blockRaw: Uint8Array): string {
+    return BitUtil.bytesToBase16(blockRaw);
   }
 
   // when the block has not been signed, we still need a valid immutable hash based on tx data
   // this is used to cache the block contents
   // Deprecated
   public static hashBlockIncomplete(blockObj: Block): string {
-    const txHashes: Uint8Array[] = [];
-    for (const txObj of blockObj.getTxobjList()) {
-      const tx = txObj.getTx();
-      const txHash = BlockUtil.hashTx(tx.serializeBinary());
+    let txHashes: Uint8Array[] = [];
+    for (let txObj of blockObj.getTxobjList()) {
+      let tx = txObj.getTx();
+      let txHash = BlockUtil.hashTx(tx.serializeBinary());
       txHashes.push(txHash);
     }
     return BitUtil.bytesToBase16(HashUtil.sha256ArrayAsBytes(txHashes));
@@ -123,9 +127,9 @@ export class BlockUtil {
     ) {
       return null;
     }
-    const addrWithoutPrefix = !caip.addr.startsWith('0x') ? caip.addr : caip.addr.substring(2);
+    let addrWithoutPrefix = !caip.addr.startsWith('0x') ? caip.addr : caip.addr.substring(2);
     const sha = HashUtil.sha256AsBytesEx(BitUtil.stringToBytesUtf(addrWithoutPrefix));
-    const shardId = sha[0];
+    let shardId = sha[0];
     Check.notNull(shardId)
     Check.isTrue(shardId >= 0 && shardId <= 255 && NumUtil.isRoundedInteger(shardId))
     Check.isTrue(shardCount >= 1)
@@ -135,9 +139,14 @@ export class BlockUtil {
   static calculateAffectedShardsTx(tx: Transaction, shardCount: number, shards = new Set<number>()): Set<number> {
     const category = tx.getCategory()
     if (category === 'INIT_DID') {
+      for (let i = 0; i < shardCount; i++) {
+        // init did affects all shards
+        // NOTE: improve later
+        shards.add(i);
+      }
       return shards;
     }
-    const senderAndRecipients = [tx.getSender(), ...tx.getRecipientsList()];
+    let senderAndRecipients = [tx.getSender(), ...tx.getRecipientsList()];
     for (const wallet of senderAndRecipients) {
       const shardId = this.calculateAffectedShard(wallet, shardCount)
       if (shardId == null) {
@@ -146,6 +155,24 @@ export class BlockUtil {
       shards.add(shardId);
     }
     return shards;
+  }
+
+  static calculateTxAffectedAddresses(block: Block, txIndex: number = null): string[] {
+    let arr = [];
+    if (txIndex == null) {
+      for (let txObj of block.getTxobjList()) {
+        const tx = txObj.getTx();
+        arr.push(tx.getRecipientsList());
+        arr.push(tx.getSender());
+      }
+    } else {
+      const txObj = block.getTxobjList()[txIndex];
+      Check.notNull(txObj, 'invalid txIndex ' + txIndex);
+      const tx = txObj.getTx();
+      arr.push(tx.getRecipientsList());
+      arr.push(tx.getSender());
+    }
+    return arr;
   }
 
   /**
@@ -168,7 +195,7 @@ export class BlockUtil {
   }
 
   public static checkValidatorTokenFormat(apiTokenBytes: Uint8Array): CheckR {
-    const token = BitUtil.bytesUtfToString(apiTokenBytes)
+    let token = BitUtil.bytesUtfToString(apiTokenBytes)
     if (StrUtil.isEmpty(token) || !token.startsWith(BlockUtil.VAL_TOKEN_PREFIX)) {
       return CheckR.failWithText(`invalid attestor token; ${StrUtil.fmt(apiTokenBytes)} should start with ${BlockUtil.ATT_TOKEN_PREFIX}`);
     }
@@ -176,7 +203,7 @@ export class BlockUtil {
   }
 
   public static checkAttestTokenFormat(attestorTokenBytes: Uint8Array): CheckR {
-    const token = BitUtil.bytesUtfToString(attestorTokenBytes)
+    let token = BitUtil.bytesUtfToString(attestorTokenBytes)
     if (StrUtil.isEmpty(token) || !token.startsWith(BlockUtil.ATT_TOKEN_PREFIX)) {
       return CheckR.failWithText(`invalid attestor token; ${StrUtil.fmt(attestorTokenBytes)} should start with ${BlockUtil.ATT_TOKEN_PREFIX}`);
     }
@@ -192,32 +219,32 @@ export class BlockUtil {
     Check.isTrue(initDid.getMasterpubkey() == evmWallet.publicKey,
       `masterPublicKey ${initDid.getMasterpubkey()}
        does not match evmWallet publicKey ${evmWallet.publicKey}`);
-    const tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
-    const sig = await EthUtil.signBytes(evmWallet, tmpBytes);
+    let tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
+    let sig = await EthUtil.signBytes(evmWallet, tmpBytes);
     tx.setSignature(sig);
   }
 
   // for tests
   public static async signTxEVM(tx: Transaction, evmWallet: Wallet) {
     Check.isTrue(ArrayUtil.isEmpty(tx.getSignature_asU8()), ' clear the signature field first, signature is:' + tx.getSignature());
-    const tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
-    const sig = await EthUtil.signBytes(evmWallet, tmpBytes);
+    let tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
+    let sig = await EthUtil.signBytes(evmWallet, tmpBytes);
     tx.setSignature(sig);
   }
 
   // for tests
   public static async signTxSolana(tx: Transaction, solanaPrivateKey: Uint8Array) {
     Check.isTrue(ArrayUtil.isEmpty(tx.getSignature_asU8()), ' clear the signature field first, signature is:' + tx.getSignature());
-    const tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
-    const sig = SolUtil.signBytes(solanaPrivateKey, tmpBytes);
+    let tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
+    let sig = SolUtil.signBytes(solanaPrivateKey, tmpBytes);
     tx.setSignature(sig);
   }
 
   // for tests
   public static async signTxStarkNet(tx: Transaction, starkNetPrivateKey: Uint8Array) {
     Check.isTrue(ArrayUtil.isEmpty(tx.getSignature_asU8()), ' clear the signature field first, signature is:' + tx.getSignature());
-    const tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
-    const sig = StarkNetUtil.signBytes(starkNetPrivateKey, tmpBytes);
+    let tmpBytes = PushSdkUtil.messageBytesToHashBytes(tx.serializeBinary());
+    let sig = StarkNetUtil.signBytes(starkNetPrivateKey, tmpBytes);
     tx.setSignature(sig);
   }
 
@@ -231,26 +258,50 @@ export class BlockUtil {
     }
     this.log.debug("checking signature `%s`", StrUtil.fmt(tx.getSignature_asU8()));
     if (tx.getCategory() === 'INIT_DID') {
-      const sig = tx.getSignature_asU8();
-      const tmp = Transaction.deserializeBinary(tx.serializeBinary());
+      let sig = tx.getSignature_asU8();
+      let tmp = Transaction.deserializeBinary(tx.serializeBinary());
       tmp.setSignature(null);
-      const tmpBytes = tmp.serializeBinary();
+      let tmpBytes = tmp.serializeBinary();
 
-      const initDid = InitDid.deserializeBinary(tx.getData_asU8());
+      let initDid = InitDid.deserializeBinary(tx.getData_asU8());
       const masterPublicKeyBytesUncompressed = BitUtil.hex0xToBytes(initDid.getMasterpubkey());
 
+      this.log.debug('checkPushInitDidSignature masterPublicKeyBytesUncompressed=%s, tmpBytes=%s, sig=%s',
+        StrUtil.fmt(masterPublicKeyBytesUncompressed), StrUtil.fmt(tmpBytes), StrUtil.fmt(sig));
       const sigCheck = await PushSdkUtil.checkPushInitDidSignature(masterPublicKeyBytesUncompressed, tmpBytes, sig);
       if (!sigCheck.success) {
         return CheckR.failWithText(sigCheck.err);
       }
+      const sigCheck2 = await PushSdkUtil.checkPushInitDidSender(caip.namespace, caip.chainId, caip.addr, masterPublicKeyBytesUncompressed);
+      if (!sigCheck2.success) {
+        return CheckR.failWithText(sigCheck2.err);
+      }
+
+
+      let map = new Map<string, WalletToEncDerivedKey>();
+      initDid.getWallettoencderivedkeyMap().forEach((value: WalletToEncDerivedKey, key: string) => {
+        map.set(key, value);
+      });
+      for (const [key, value] of map) {
+        const [caip, err] = ChainUtil.parseCaipAddress(key);
+        if (err != null) {
+          return CheckR.failWithText('failed to parse caip address: ' + err);
+        }
+        const check = await PushSdkUtil.checkPushInitDidWalletMapping(caip.namespace, caip.chainId, caip.addr,
+          masterPublicKeyBytesUncompressed, value.getSignature_asU8());
+        if (!check.success) {
+          return check;
+        }
+      }
+
       return CheckR.ok();
     }
-    const sig = tx.getSignature_asU8();
-    const tmp = Transaction.deserializeBinary(tx.serializeBinary());
+    let sig = tx.getSignature_asU8();
+    let tmp = Transaction.deserializeBinary(tx.serializeBinary());
     tmp.setSignature(null);
-    const tmpBytes = tmp.serializeBinary();
-
-    const sigCheck = await PushSdkUtil.checkPushNetworkSignature(caip.namespace, caip.chainId, caip.addr, tmpBytes, sig);
+    let tmpBytes = tmp.serializeBinary();
+    let hashBytes = PushSdkUtil.messageBytesToHashBytes(tmpBytes);
+    const sigCheck = await PushSdkUtil.checkPushNetworkSignature(caip.namespace, caip.chainId, caip.addr, hashBytes, sig);
     if (!sigCheck.success) {
       return CheckR.failWithText(sigCheck.err);
     }
@@ -279,11 +330,11 @@ export class BlockUtil {
     if (!ArrayUtil.hasMinSize(tx.getSalt_asU8(), 4)) {
       return CheckR.failWithText(`salt field requires >=4 bytes ; ` + StrUtil.fmt(tx.getSalt_asU8()));
     }
-    const payloadCheck = await BlockUtil.checkTxPayload(tx);
+    let payloadCheck = await BlockUtil.checkTxPayload(tx);
     if (!payloadCheck.success) {
       return payloadCheck;
     }
-    const validSignature = await BlockUtil.checkTxSignature(tx);
+    let validSignature = await BlockUtil.checkTxSignature(tx);
     if (!validSignature.success) {
       return CheckR.failWithText(validSignature.err);
     }
@@ -293,7 +344,7 @@ export class BlockUtil {
 
   public static async checkTxPayload(tx: Transaction): Promise<CheckR> {
     if (tx.getCategory() === 'INIT_DID') {
-      const txData = InitDid.deserializeBinary(tx.getData_asU8());
+      let txData = InitDid.deserializeBinary(tx.getData_asU8());
       if (StrUtil.isEmpty(txData.getMasterpubkey())) {
         CheckR.failWithText(`masterPubKey missing`);
       }
@@ -315,26 +366,26 @@ export class BlockUtil {
   // for tests
   public static async signBlockAsValidator(wallet: Wallet, blockNoSigs: Block) {
     Check.isTrue(blockNoSigs.getSignersList().length == 0);
-    for (const txObj of blockNoSigs.getTxobjList()) {
-      const voteObj = new TxValidatorData();
+    for (let txObj of blockNoSigs.getTxobjList()) {
+      let voteObj = new TxValidatorData();
       voteObj.setVote(Vote.ACCEPTED);
       txObj.setValidatordata(voteObj);
       txObj.clearAttestordataList();
     }
     const ethSig = await EthUtil.signBytes(wallet, blockNoSigs.serializeBinary());
-    const vSign = new Signer();
+    let vSign = new Signer();
     vSign.setSig(ethSig);
     blockNoSigs.setSignersList([vSign]);
   }
 
   // for tests
   public static async signBlockAsAttestor(wallet: Wallet, blockSignedByV: Block): Promise<AttestBlockResult> {
-    const tmpBlock = Block.deserializeBinary(blockSignedByV.serializeBinary());
+    let tmpBlock = Block.deserializeBinary(blockSignedByV.serializeBinary());
     Check.isTrue(blockSignedByV.getSignersList().length == 1);
     // tmp block with vsig + attestor data gets signed
-    const ar = new AttestBlockResult();
-    for (const txObj of tmpBlock.getTxobjList()) {
-      const attestorData = new TxAttestorData();
+    let ar = new AttestBlockResult();
+    for (let txObj of tmpBlock.getTxobjList()) {
+      let attestorData = new TxAttestorData();
       attestorData.setVote(Vote.ACCEPTED);
 
       ar.getAttestordataList().push(attestorData);
@@ -344,7 +395,7 @@ export class BlockUtil {
     const ethSig = await EthUtil.signBytes(wallet, tmpBlock.serializeBinary());
 
     // embed attestor data and signature into real object
-    const aSign = new Signer();
+    let aSign = new Signer();
     aSign.setSig(ethSig);
     ar.setSigner(aSign);
     return ar;
@@ -353,24 +404,24 @@ export class BlockUtil {
   // for tests
   public static async appendPatchAsValidator(wallet: Wallet, blockSignedByVA: Block, ar: AttestBlockResult): Promise<void> {
     for (let txIndex = 0; txIndex < blockSignedByVA.getTxobjList().length; txIndex++) {
-      const attestDataPerTx = ar.getAttestordataList()[txIndex];
+      let attestDataPerTx = ar.getAttestordataList()[txIndex];
       blockSignedByVA.getTxobjList()[txIndex].getAttestordataList().push(attestDataPerTx);
     }
     blockSignedByVA.getSignersList().push(ar.getSigner());
   }
 
   public static async recoverPatchAddress(wallet: Wallet, blockSignedByVA: Readonly<Block>, ar: AttestBlockResult): Promise<string> {
-    const tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
+    let tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
     // tx0 -> attest0, ...
     // is restructured into
     // block.txObj[0].tx -> attest0, ...
     for (let txIndex = 0; txIndex < tmpBlock.getTxobjList().length; txIndex++) {
-      const attestDataPerTx = ar.getAttestordataList()[txIndex];
+      let attestDataPerTx = ar.getAttestordataList()[txIndex];
       tmpBlock.getTxobjList()[txIndex].setAttestordataList([attestDataPerTx]);
     }
 
-    const aSignatureBytes = ar.getSigner().getSig_asU8();
-    const tmpBlockBytes = tmpBlock.serializeBinary();
+    let aSignatureBytes = ar.getSigner().getSig_asU8();
+    let tmpBlockBytes = tmpBlock.serializeBinary();
     this.log.debug('recovery pub key from block with hash: %s', EthUtil.ethHash(tmpBlockBytes));
     const attestorNodeId = EthUtil.recoverAddressFromMsg(tmpBlockBytes, aSignatureBytes);
     this.log.debug('attestorNodeId %o', attestorNodeId);
@@ -383,27 +434,27 @@ export class BlockUtil {
       // validator
       const validatorSignature = blockSignedByVA.getSignersList()[0]?.getSig_asU8();
       Check.notNull(validatorSignature, "validator signature is required");
-      const tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
+      let tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
       tmpBlock.clearSignersList();
       for (const txObj of tmpBlock.getTxobjList()) {
         txObj.clearAttestordataList();
       }
-      const blockBytesNoSigners = tmpBlock.serializeBinary();
+      let blockBytesNoSigners = tmpBlock.serializeBinary();
       const blockValidatorNodeId = EthUtil.recoverAddressFromMsg(blockBytesNoSigners, validatorSignature);
       BlockUtil.log.debug('signature # %s by %s (validator) ', 0, blockValidatorNodeId);
       return blockValidatorNodeId;
     } else {
-      const tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
-      const onlyVSignature = [blockSignedByVA.getSignersList()[0]];
+      let tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
+      let onlyVSignature = [blockSignedByVA.getSignersList()[0]];
       tmpBlock.setSignersList(onlyVSignature);
       for (let txIndex = 0; txIndex < tmpBlock.getTxobjList().length; txIndex++) {
         const txObj = tmpBlock.getTxobjList()[txIndex];
-        const onlyOneAttestation = blockSignedByVA.getTxobjList()[txIndex].getAttestordataList()[signerIndex - 1];
+        let onlyOneAttestation = blockSignedByVA.getTxobjList()[txIndex].getAttestordataList()[signerIndex - 1];
         txObj.setAttestordataList([onlyOneAttestation]);
       }
 
-      const blockBytesNoSignersAnd1Attest = tmpBlock.serializeBinary();
-      const attSignature = blockSignedByVA.getSignersList()[signerIndex].getSig_asU8();
+      let blockBytesNoSignersAnd1Attest = tmpBlock.serializeBinary();
+      let attSignature = blockSignedByVA.getSignersList()[signerIndex].getSig_asU8();
       const attNodeId = EthUtil.recoverAddressFromMsg(blockBytesNoSignersAnd1Attest, attSignature);
       BlockUtil.log.debug('signature # %s by %s ', signerIndex - 1, attNodeId);
       return attNodeId;
@@ -431,7 +482,7 @@ export class BlockUtil {
     let totalTxBytes = 0;
     for (let i = 0; i < blockSignedByV.getTxobjList().length; i++) {
       const txObj = blockSignedByV.getTxobjList()[i];
-      const tx = txObj.getTx();
+      let tx = txObj.getTx();
       if (tx == null) {
         return CheckR.failWithText('empty transaction found!');
       }
@@ -444,7 +495,7 @@ export class BlockUtil {
       if (txObj.getValidatordata() == null || !BlockUtil.VALID_VALIDATOR_VOTES.has(txObj.getValidatordata().getVote())) {
         return CheckR.failWithText(`tx # ${i} has invalid validator data`);
       }
-      const check1 = await BlockUtil.checkTx(tx);
+      let check1 = await BlockUtil.checkTx(tx);
       if (!check1.success) {
         return check1;
       }
@@ -468,14 +519,16 @@ export class BlockUtil {
     const blockValidatorNodeId = await BlockUtil.recoverSignerAddress(blockSignedByV, 0);
     BlockUtil.log.debug('signature # %s by %s (validator) ', 0, blockValidatorNodeId);
     const allowed = validatorsFromContract.has(blockValidatorNodeId);
-    Check.isTrue(allowed, `unregistered validator: ${blockValidatorNodeId}`);
+    if (!allowed) {
+      return CheckR.failWithText(`unregistered validator_: ${blockValidatorNodeId}`);
+    }
     return CheckR.ok();
   }
 
   public static async checkBlockFinalized(blockSignedByVA: Block,
                                           validatorsFromContract: Set<string>,
                                           valPerBlockFromContract: number) {
-    const check1 = await BlockUtil.checkBlockAsAttestor(blockSignedByVA, validatorsFromContract);
+    let check1 = await BlockUtil.checkBlockAsAttestor(blockSignedByVA, validatorsFromContract);
     if (!check1.success) {
       return check1;
     }
@@ -490,10 +543,10 @@ export class BlockUtil {
       }
     }
 
-    const attestorCount = sigCount - 1;
+    let attestorCount = sigCount - 1;
     for (let txIndex = 0; txIndex < blockSignedByVA.getTxobjList().length; txIndex++) {
       const txObj = blockSignedByVA.getTxobjList()[txIndex];
-      const tx = txObj.getTx();
+      let tx = txObj.getTx();
       if (tx == null) {
         return CheckR.failWithText('empty transaction found!');
       }
@@ -510,14 +563,36 @@ export class BlockUtil {
 
     // do A signature check
     // this requires clearing all signatures + all attestor data except the current one
-    const tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
-    const onlyVSignature = [blockSignedByVA.getSignersList()[0]];
+    let tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
+    let onlyVSignature = [blockSignedByVA.getSignersList()[0]];
     tmpBlock.setSignersList(onlyVSignature);
     for (let attIndex = 1; attIndex < sigCount; attIndex++) {
       const attNodeId = await BlockUtil.recoverSignerAddress(blockSignedByVA, attIndex);
       BlockUtil.log.debug('signature # %s by %s ', attIndex - 1, attNodeId);
       const allowed = validatorsFromContract.has(attNodeId)
-      Check.isTrue(allowed, `unregistered validator_: ${attNodeId}`)
+      if (!allowed) {
+        return CheckR.failWithText(`unregistered validator_: ${attNodeId}`);
+      }
+    }
+    return CheckR.ok();
+  }
+
+  public static async checkBlockAsSNode(blockSignedByVA: Readonly<Block>,
+                                        validatorsFromContract: Set<string>,
+                                        valPerBlockFromContract: number): Promise<CheckR> {
+    const sigCount = blockSignedByVA.getSignersList().length;
+    if (sigCount != valPerBlockFromContract) {
+      return CheckR.failWithText(`block has only ${sigCount} signatures; expected ${valPerBlockFromContract} signatures `);
+    }
+    let tmpBlock = Block.deserializeBinary(blockSignedByVA.serializeBinary());
+    let onlyVSignature = [blockSignedByVA.getSignersList()[0]];
+    tmpBlock.setSignersList(onlyVSignature);
+    for (let attIndex = 0; attIndex < sigCount; attIndex++) {
+      const attNodeId = await BlockUtil.recoverSignerAddress(blockSignedByVA, attIndex);
+      const allowed = validatorsFromContract.has(attNodeId);
+      if (!allowed) {
+        return CheckR.failWithText(`unregistered validator_: ${attNodeId}`);
+      }
     }
     return CheckR.ok();
   }
