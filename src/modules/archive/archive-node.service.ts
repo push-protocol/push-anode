@@ -13,6 +13,7 @@ import {
   InputJsonValue,
   InputJsonObject,
 } from '@prisma/client/runtime/library';
+import { Tuple } from '../../utilz/tuple';
 
 type Transaction = {
   ts?: bigint | number;
@@ -60,20 +61,18 @@ export class ArchiveNodeService implements Consumer<QItem> {
     }
   }
 
-  public async handleBlock(
-    deserializedBlock: Block,
-    blockBytes: Uint8Array,
-  ): Promise<boolean> {
+  public async handleBlock(blockObj: Block, blockBytes: Uint8Array): Promise<Tuple<boolean, string>> {
     try {
-      const block = deserializedBlock.toObject();
-      if (!(await this.validateBlock(deserializedBlock))) {
-        throw new Error('Block validation failed');
-      }
-      // Extract block hash from the block
-      const blockHash = this.getBlockHash(block);
+      // check by block hash
+      const blockHash = BlockUtil.hashBlockAsHex(blockBytes);
       if (await this.isBlockAlreadyStored(blockHash)) {
         console.log('Block already exists, skipping:', blockHash);
-        return true;
+        return [true, null];
+      }
+      // check if valid
+      const block = blockObj.toObject();
+      if (!(await this.validateBlock(blockObj))) {
+        throw new Error('Block validation failed');
       }
 
       // Prepare the block data for insertion
@@ -83,16 +82,15 @@ export class ArchiveNodeService implements Consumer<QItem> {
         data: Buffer.from(blockBytes), // Store the binary data
         ts: block.ts,
       };
-
       // Prepare transaction data for insertion
       const transactionsData = await this.prepareTransactionsData(
-        deserializedBlock.getTxobjList(),
+        blockObj.getTxobjList(),
         blockHash,
         block.ts,
       );
       if (transactionsData.length === 0) {
         console.log('All transactions already exist, skipping block insert.');
-        return true;
+        return [true, null];
       }
       // Insert block into the database
       await this.prisma.block.create({ data: blockData });
@@ -101,10 +99,10 @@ export class ArchiveNodeService implements Consumer<QItem> {
       await this.prisma.transaction.createMany({ data: transactionsData });
 
       console.log('Block and transactions inserted:', blockHash);
-      return true;
+      return [true, null];
     } catch (error) {
       console.error('Failed to process block:', error);
-      return false;
+      return [false, error.message];
     }
   }
 
@@ -160,11 +158,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
   }
 
   // TODO: remove from or sender its redundant
-  private async prepareTransactionsData(
-    txObjList: Array<TransactionObj>,
-    blockHash: string,
-    blockTs: number,
-  ): Promise<Transaction[]> {
+  private async prepareTransactionsData(txObjList: Array<TransactionObj>, blockHash: string, blockTs: number,): Promise<Transaction[]> {
     const transactionsData = [];
 
     for (const txObj of txObjList) {

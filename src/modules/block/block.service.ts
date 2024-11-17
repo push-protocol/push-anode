@@ -6,9 +6,14 @@ import { Block, Prisma, Transaction } from '@prisma/client';
 import { ArchiveNodeService } from '../archive/archive-node.service';
 import { BitUtil } from '../../utilz/bitUtil';
 import { BlockUtil } from '../validator/blockUtil';
+import { Logger } from 'winston';
+import { WinstonUtil } from '../../utilz/winstonUtil';
+import { StrUtil } from '../../utilz/strUtil';
 
 @Injectable()
 export class BlockService {
+  private log: Logger = WinstonUtil.newLog(BlockService);
+
   constructor(private prisma: PrismaService,
               private archiveNodeService: ArchiveNodeService) {}
 
@@ -148,8 +153,9 @@ export class BlockService {
   }
 
   // TODO: Add signature validation
+  // TODO: normal logging
   async push_putBlockHash(hashes: string[]) {
-    console.log('Input hashes:', hashes);
+    this.log.debug('push_putBlockHash: %s', StrUtil.fmt(hashes));
     if (hashes.length === 0) {
       return [];
     }
@@ -163,13 +169,13 @@ export class BlockService {
     const statusArr = results.map((result) =>
       result.is_present === 1 ? 'DO_NOT_SEND' : 'SEND',
     );
-    console.log('Returning response:', statusArr); // Debug final response
+    this.log.debug('Returning response: %s', statusArr);
     return statusArr;
   }
 
   // TODO: add signature validation
   async push_putBlock(blocks: string[]):Promise<{ status: string; reason?: string }[]> {
-    console.log('blocks:', blocks);
+    this.log.debug('push_putBlock: %s', StrUtil.fmt(blocks));
     let statusArr: { status: string; reason?: string }[] = [];
     if (blocks.length === 0) {
       return statusArr;
@@ -180,7 +186,11 @@ export class BlockService {
         let block = blocks[i];
         const mb = BitUtil.base16ToBytes(block);
         const parsedBlock = BlockUtil.parseBlock(mb);
-        const res = await this.archiveNodeService.handleBlock(parsedBlock, mb,);
+        const [res, err] = await this.archiveNodeService.handleBlock(parsedBlock, mb);
+        if(err!=null) {
+          statusArr.push({ status: 'REJECTED', reason: err });
+          continue;
+        }
         if (!res) {
           statusArr.push({ status: 'REJECTED', reason: 'duplicate' });
           continue;
@@ -190,6 +200,7 @@ export class BlockService {
         statusArr.push({ status: 'REJECTED', reason: error.message });
       }
     }
+    this.log.debug('Returning response: %s', statusArr);
     return statusArr;
   }
 }
