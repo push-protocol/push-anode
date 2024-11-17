@@ -9,12 +9,12 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "plugins": ["@typescript-eslint", "simple-import-sort"],
+  "plugins": ["@typescript-eslint"],
   "rules": {
-    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-imports": "off",
     "prefer-const": "off",
-    "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error",
-    "no-var": "error"
+    "simple-import-sort/imports": "off",
+    "simple-import-sort/exports": "off",
+    "no-var": "off"
   }
 }

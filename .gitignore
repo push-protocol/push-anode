@@ -8,3 +8,4 @@ app.log
 .idea
 build/
 log/
+external/
