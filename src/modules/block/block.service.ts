@@ -168,12 +168,12 @@ export class BlockService {
   }
 
   // TODO: add signature validation
-  async push_putBlock(blocks: string[]) {
+  async push_putBlock(blocks: string[]):Promise<{ status: string; reason?: string }[]> {
     console.log('blocks:', blocks);
-    if (blocks.length === 0) {
-      return { result: [] };
-    }
     let statusArr: { status: string; reason?: string }[] = [];
+    if (blocks.length === 0) {
+      return statusArr;
+    }
     const prisma = new PrismaService();
     for (let i = 0; i < blocks.length; i++) {
       try {

@@ -580,6 +580,7 @@ export class BlockUtil {
   public static async checkBlockAsSNode(blockSignedByVA: Readonly<Block>,
                                         validatorsFromContract: Set<string>,
                                         valPerBlockFromContract: number): Promise<CheckR> {
+
     const sigCount = blockSignedByVA.getSignersList().length;
     if (sigCount != valPerBlockFromContract) {
       return CheckR.failWithText(`block has only ${sigCount} signatures; expected ${valPerBlockFromContract} signatures `);
