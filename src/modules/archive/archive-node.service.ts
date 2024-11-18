@@ -54,7 +54,8 @@ export class ArchiveNodeService implements Consumer<QItem> {
         );
       }
       // validate the signature
-      return await this.handleBlock(deserializedBlock, bytes);
+      let [res, err] = await this.handleBlock(deserializedBlock, bytes);
+      return res;
     } catch (error) {
       console.log('Failed to process block:', error);
       return false;
