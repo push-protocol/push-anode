@@ -1,6 +1,6 @@
 import { Logger } from 'winston';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WinstonUtil } from '../../utils/winstonUtil';
+import { WinstonUtil } from '../../utilz/winstonUtil';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
 import { Injectable } from '@nestjs/common';
 

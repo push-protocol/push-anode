@@ -1,14 +1,17 @@
 import { Injectable, LoggerService } from '@nestjs/common';
 import { createLogger, format, transports } from 'winston';
+import { WinstonUtil } from '../../utilz/winstonUtil';
 
 @Injectable()
 export class WinstonLoggerService implements LoggerService {
+
   private logger = createLogger({
     level: 'info',
     format: format.combine(format.timestamp(), format.json()),
     transports: [
       new transports.Console(),
-      new transports.File({ filename: 'app.log' }),
+      // customizable LOG_DIR path is needed for dockerized setups
+      new transports.File({ filename: `${WinstonUtil.LOG_DIR}/app.log` }),
     ],
   });
 

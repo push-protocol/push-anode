@@ -9,7 +9,7 @@ import {
   Vote,
   TxAttestorData,
   Signer,
-} from './generated/block_pb';
+} from './generated/push/block_pb';
 // Adjust the path if needed
 
 const prisma = new PrismaClient();

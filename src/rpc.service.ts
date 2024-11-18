@@ -261,4 +261,69 @@ export class RpcService {
   async health(): Promise<{ success: string }> {
     return { success: 'ok' };
   }
+
+/*
+ex
+
+req:
+{
+ "jsonrpc": "2.0",
+ "method": "RpcService.push_putBlockHash",
+ "params": ["ccf10ae9371c4636af37b9e86e042ab888b2699e813ae2eb6955ded220abba84","ffffff"],
+ "id": 1
+}
+
+resp:
+ {
+  "jsonrpc": "2.0",
+  "result": ["SEND","SEND"],
+  "id": 1
+ }
+ 
+ */
+  async push_putBlockHash(...hashes: string[]) {
+    console.log('hashes:', hashes);
+    if (!Array.isArray(hashes)) {
+      throw new Error(
+        'Invalid hashes input: Expected non-empty array of strings',
+      );
+    }
+    return await this.blockService.push_putBlockHash(hashes);
+  }
+
+
+  /*
+  ex
+
+  req:
+{
+    "jsonrpc": "2.0",
+    "method": "RpcService.push_putBlock",
+    "params": ["08c4887a191b"],
+    "id": 1
+}
+
+  resp:
+{
+    "jsonrpc": "2.0",
+    "result": [
+        {
+            "status": "REJECTED",
+            "reason": "duplicate"
+        }
+    ],
+    "id": 1
+}
+   */
+
+  async push_putBlock(...blocks: string[]) {
+    if (!Array.isArray(blocks)) {
+      throw new Error(
+        'Invalid blocks input: Expected non-empty array of strings',
+      );
+    }
+    return await this.blockService.push_putBlock(blocks);
+    // console.log('Result:', result);
+    // return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
 }

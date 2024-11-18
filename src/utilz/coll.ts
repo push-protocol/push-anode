@@ -1,5 +1,6 @@
 // CollectionUtils
 // all the proper type safe way to work with JS collections/sets/arrays
+
 export class Coll {
   public static arrayToMap<K extends keyof V, V>(arr: V[], keyField: K): Map<V[K], V> {
     if (arr == null || arr.length == 0) {
@@ -8,24 +9,7 @@ export class Coll {
     return new Map<V[K], V>(arr.map((value) => [value[keyField], value]))
   }
 
-  public static mapValuesToArray<K extends keyof V, V>(map: Map<V[K], V>): V[] {
-    if (map == null || map.size == 0) {
-      return []
-    }
-    return [...map.values()]
-  }
-
-  public static mapKeysToArray<K>(map: Map<K, any>): K[] {
-    if (map == null || map.size == 0) {
-      return []
-    }
-    return [...map.keys()]
-  }
-
   public static arrayToSet<V>(arr: V[]): Set<V> {
-    if (arr == null) {
-      return new Set<V>()
-    }
     return new Set<V>(arr)
   }
 
@@ -42,9 +26,6 @@ export class Coll {
   }
 
   public static setToArray<V>(set: Set<V>): V[] {
-    if (set == null) {
-      return []
-    }
     return Array.from(set.keys())
   }
 
@@ -103,5 +84,35 @@ export class Coll {
         .join(',') +
       ')'
     )
+  }
+
+  public static sortMapOfArrays<K, V>(srcMap: Map<K, V[]>, asc: boolean): Map<K, V[]> {
+    return new Map<K, V[]>(
+      [...srcMap].sort((a, b) => {
+        // a[0] = key, a[1] = value
+        if (a[1].length == b[1].length) return 0
+        if (a[1].length > b[1].length) return asc ? 1 : -1
+        if (a[1].length < b[1].length) return asc ? -1 : 1
+      })
+    )
+  }
+
+  /**
+   * Computes a value and associates it with the specified key in the map if the key is not already present.
+   * If the key is already associated with a value, returns the existing value.
+   *
+   * @param  map - The map in which to compute and store the value.
+   * @param  key - The key with which the computed value is to be associated.
+   * @param createFun - A function that computes the value for the given key if it is absent.
+   *
+   * @return The current (existing or computed) value associated with the specified key.
+   */
+  public static computeIfAbsent<K, V>(map: Map<K, V>, key: K, createFun: (key: K) => V): V {
+    let value = map.get(key);
+    if (value === undefined) {
+      value = createFun(key);
+      map.set(key, value);
+    }
+    return value;
   }
 }

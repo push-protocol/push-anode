@@ -4,4 +4,4 @@ build
 dist
 # these files come from push-vnode; don't reformat them please;
 src/utilz/*.ts
-src/services/messaging-common/*.ts
+src/modules/validator/*.ts

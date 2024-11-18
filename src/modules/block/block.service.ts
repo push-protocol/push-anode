@@ -3,10 +3,19 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BlockWithTransactions } from './dto/block.transactions.dto';
 import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
+import { ArchiveNodeService } from '../archive/archive-node.service';
+import { BitUtil } from '../../utilz/bitUtil';
+import { BlockUtil } from '../validator/blockUtil';
+import { Logger } from 'winston';
+import { WinstonUtil } from '../../utilz/winstonUtil';
+import { StrUtil } from '../../utilz/strUtil';
 
 @Injectable()
 export class BlockService {
-  constructor(private prisma: PrismaService) {}
+  private log: Logger = WinstonUtil.newLog(BlockService);
+
+  constructor(private prisma: PrismaService,
+              private archiveNodeService: ArchiveNodeService) {}
 
   async push_getBlocksByTime(
     startTime: number,
@@ -141,5 +150,57 @@ export class BlockService {
 
   async getTotalBlocks(): Promise<number> {
     return this.prisma.block.count();
+  }
+
+  // TODO: Add signature validation
+  // TODO: normal logging
+  async push_putBlockHash(hashes: string[]) {
+    this.log.debug('push_putBlockHash: %s', StrUtil.fmt(hashes));
+    if (hashes.length === 0) {
+      return [];
+    }
+    const results = await this.prisma.$queryRaw<
+      Array<{ hash: string; is_present: number }>
+    >(
+      Prisma.sql`SELECT h.hash, CASE WHEN b.block_hash IS NOT NULL THEN 1 ELSE 0 END AS is_present
+    FROM unnest(${hashes}::text[]) AS h(hash)
+    LEFT JOIN "Block" b ON h.hash = b.block_hash`,
+    );
+    const statusArr = results.map((result) =>
+      result.is_present === 1 ? 'DO_NOT_SEND' : 'SEND',
+    );
+    this.log.debug('Returning response: %s', statusArr);
+    return statusArr;
+  }
+
+  // TODO: add signature validation
+  async push_putBlock(blocks: string[]):Promise<{ status: string; reason?: string }[]> {
+    this.log.debug('push_putBlock: %s', StrUtil.fmt(blocks));
+    let statusArr: { status: string; reason?: string }[] = [];
+    if (blocks.length === 0) {
+      return statusArr;
+    }
+    const prisma = new PrismaService();
+    for (let i = 0; i < blocks.length; i++) {
+      try {
+        let block = blocks[i];
+        const mb = BitUtil.base16ToBytes(block);
+        const parsedBlock = BlockUtil.parseBlock(mb);
+        const [res, err] = await this.archiveNodeService.handleBlock(parsedBlock, mb);
+        if(err!=null) {
+          statusArr.push({ status: 'REJECTED', reason: err });
+          continue;
+        }
+        if (!res) {
+          statusArr.push({ status: 'REJECTED', reason: 'duplicate' });
+          continue;
+        }
+        statusArr.push({ status: 'SUCCESS' });
+      } catch (error) {
+        statusArr.push({ status: 'REJECTED', reason: error.message });
+      }
+    }
+    this.log.debug('Returning response: %s', statusArr);
+    return statusArr;
   }
 }

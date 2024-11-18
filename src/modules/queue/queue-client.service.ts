@@ -1,9 +1,9 @@
 import { Logger } from 'winston';
-import { WinstonUtil } from '../../utils/winstonUtil';
+import { WinstonUtil } from '../../utilz/winstonUtil';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QItem } from '../../messaging/types/queue-types';
 import { ArchiveNodeService } from '../archive/archive-node.service';
-import { RpcUtils } from '../../utils/rpcUtil';
+import { RpcUtils } from '../../utilz/rpcUtil';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -2,17 +2,18 @@ import {
   Block,
   TransactionObj,
   Transaction as Tx,
-} from '../../generated/block_pb';
+} from '../../generated/push/block_pb';
 import { Consumer, QItem } from '../../messaging/types/queue-types';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ObjectHasher } from '../../utils/objectHasher';
+import { ObjectHasher } from '../../utilz/objectHasher';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
-import { BlockUtil } from '../../utils/blockUtil';
+import { BlockUtil } from '../validator/blockUtil';
 import {
   InputJsonValue,
   InputJsonObject,
 } from '@prisma/client/runtime/library';
+import { Tuple } from '../../utilz/tuple';
 
 type Transaction = {
   ts?: bigint | number;
@@ -29,13 +30,9 @@ type Transaction = {
 };
 @Injectable()
 export class ArchiveNodeService implements Consumer<QItem> {
-  valContractState: ValidatorContractState = new ValidatorContractState();
 
-  async postConstruct() {
-    await this.valContractState.onModuleInit();
-  }
-  constructor(private readonly prisma: PrismaService) {
-    this.postConstruct();
+  constructor(private prisma: PrismaService,
+              private valContractState: ValidatorContractState) {
   }
 
   public async accept(item: QItem): Promise<boolean> {
@@ -43,7 +40,6 @@ export class ArchiveNodeService implements Consumer<QItem> {
       // Deserialize the block data
       const bytes = Uint8Array.from(Buffer.from(item.object, 'hex'));
       const deserializedBlock = Block.deserializeBinary(bytes);
-      const block = deserializedBlock.toObject();
 
       // Block validation //
       // validate the hash
@@ -58,33 +54,43 @@ export class ArchiveNodeService implements Consumer<QItem> {
         );
       }
       // validate the signature
-      if (!(await this.validateBlock(deserializedBlock))) {
-        throw new Error('Block validation failed');
-      }
-      // Extract block hash from the block
-      const blockHash = this.getBlockHash(block);
+      return await this.handleBlock(deserializedBlock, bytes);
+    } catch (error) {
+      console.log('Failed to process block:', error);
+      return false;
+    }
+  }
+
+  public async handleBlock(blockObj: Block, blockBytes: Uint8Array): Promise<Tuple<boolean, string>> {
+    try {
+      // check by block hash
+      const blockHash = BlockUtil.hashBlockAsHex(blockBytes);
       if (await this.isBlockAlreadyStored(blockHash)) {
         console.log('Block already exists, skipping:', blockHash);
-        return true;
+        return [true, null];
+      }
+      // check if valid
+      const block = blockObj.toObject();
+      if (!(await this.validateBlock(blockObj))) {
+        throw new Error('Block validation failed');
       }
 
       // Prepare the block data for insertion
       const blockData = {
         block_hash: blockHash,
         data_as_json: this.recursivelyConvertToJSON(block), // Convert to JSON-compatible format
-        data: Buffer.from(bytes), // Store the binary data
+        data: Buffer.from(blockBytes), // Store the binary data
         ts: block.ts,
       };
-
       // Prepare transaction data for insertion
       const transactionsData = await this.prepareTransactionsData(
-        deserializedBlock.getTxobjList(),
+        blockObj.getTxobjList(),
         blockHash,
         block.ts,
       );
       if (transactionsData.length === 0) {
         console.log('All transactions already exist, skipping block insert.');
-        return true;
+        return [true, null];
       }
       // Insert block into the database
       await this.prisma.block.create({ data: blockData });
@@ -93,17 +99,17 @@ export class ArchiveNodeService implements Consumer<QItem> {
       await this.prisma.transaction.createMany({ data: transactionsData });
 
       console.log('Block and transactions inserted:', blockHash);
-      return true;
+      return [true, null];
     } catch (error) {
-      console.log('Failed to process block:', error);
-      return false;
+      console.error('Failed to process block:', error);
+      return [false, error.message];
     }
   }
 
   private async validateBlock(block: Block) {
     const validatorSet = new Set(this.valContractState.getAllNodesMap().keys());
     const validationPerBlock = this.valContractState.contractCli.valPerBlock;
-    const validationRes = await BlockUtil.checkBlockFinalized(
+    const validationRes = await BlockUtil.checkBlockAsSNode(
       block,
       validatorSet,
       validationPerBlock,
@@ -152,11 +158,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
   }
 
   // TODO: remove from or sender its redundant
-  private async prepareTransactionsData(
-    txObjList: Array<TransactionObj>,
-    blockHash: string,
-    blockTs: number,
-  ): Promise<Transaction[]> {
+  private async prepareTransactionsData(txObjList: Array<TransactionObj>, blockHash: string, blockTs: number,): Promise<Transaction[]> {
     const transactionsData = [];
 
     for (const txObj of txObjList) {

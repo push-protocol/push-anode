@@ -4,7 +4,7 @@ import hash, { NormalOption } from 'object-hash';
  * Allows to build a consistent hash out of a json object
  */
 export class ObjectHasher {
-  private static options: NormalOption = {
+  private static options = {
     algorithm: 'sha256',
     encoding: 'hex',
     respectFunctionProperties: false, // skip functions
@@ -12,8 +12,8 @@ export class ObjectHasher {
     respectType: false, // skip class info
     unorderedArrays: false, // don't sort arrays before hash
     unorderedSets: false, // don't sort sets before hash
-    unorderedObjects: true, // sort object properties before hash
-  };
+    unorderedObjects: true // sort object properties before hash
+  } as NormalOption
 
   // todo Object.assign(target, src)
   /**
@@ -22,24 +22,24 @@ export class ObjectHasher {
    * @param obj json object
    */
   public static hashToSha256(obj: any): string {
-    return hash(obj, ObjectHasher.options);
+    return hash(obj, ObjectHasher.options)
   }
 
   public static hashToSha256IgnoreSig(obj: any): string {
     return hash(obj, {
       ...ObjectHasher.options,
-      excludeKeys: function (propName: any) {
-        return 'signature' === propName;
-      },
-    });
+      excludeKeys: function (propName) {
+        return 'signature' === propName
+      }
+    })
   }
 
   public static hashToSha256IgnoreRecipientsResolved(obj: any): string {
     return hash(obj, {
       ...ObjectHasher.options,
-      excludeKeys: function (propName: any) {
-        return 'recipientsResolved' === propName;
-      },
-    });
+      excludeKeys: function (propName) {
+        return 'recipientsResolved' === propName
+      }
+    })
   }
 }
