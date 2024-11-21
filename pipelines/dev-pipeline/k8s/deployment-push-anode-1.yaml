@@ -4,7 +4,7 @@ metadata:
   name: 'push-anode-1'
   namespace: 'apps'
 spec:
-  replicas: 1
+  replicas: 0 # Update to 1 when deploying on GKE
   selector:
     matchLabels:
       app: 'push-anode-1'
