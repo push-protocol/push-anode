@@ -262,7 +262,7 @@ export class BlockService {
           category: tx.category,
           recipientsList: tx.recipientsList
         }
-      };
+      } as Item;
     });
     for (const row of itemsArr) {
       this.log.debug('row %o', row);
@@ -271,6 +271,28 @@ export class BlockService {
     return {
       items: itemsArr,
       lastTs: lastTs
-    }
+    } as PushGetTransactionsResult
   }
 }
+
+type Payload = {
+  data: string;
+  hash: string;
+  type: number;
+  sender: string;
+  category: string;
+  recipientsList: string;
+}
+
+type Item = {
+  ns: string;
+  skey: string;
+  ts: string;
+  payload: Payload;
+}
+
+type PushGetTransactionsResult = {
+  items: Item[];
+  lastTs: string | null;
+}
+
