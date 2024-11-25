@@ -9,13 +9,18 @@ import { BlockUtil } from '../validator/blockUtil';
 import { Logger } from 'winston';
 import { WinstonUtil } from '../../utilz/winstonUtil';
 import { StrUtil } from '../../utilz/strUtil';
+import { DateUtil } from '../../utilz/dateUtil';
+import { Check } from '../../utilz/check';
+import { NumUtil } from '../../utilz/numUtil';
 
 @Injectable()
 export class BlockService {
   private log: Logger = WinstonUtil.newLog(BlockService);
 
-  constructor(private prisma: PrismaService,
-              private archiveNodeService: ArchiveNodeService) {}
+  constructor(
+    private prisma: PrismaService,
+    private archiveNodeService: ArchiveNodeService,
+  ) {}
 
   async push_getBlocksByTime(
     startTime: number,
@@ -174,7 +179,9 @@ export class BlockService {
   }
 
   // TODO: add signature validation
-  async push_putBlock(blocks: string[]):Promise<{ status: string; reason?: string }[]> {
+  async push_putBlock(
+    blocks: string[],
+  ): Promise<{ status: string; reason?: string }[]> {
     this.log.debug('push_putBlock: %s', StrUtil.fmt(blocks));
     let statusArr: { status: string; reason?: string }[] = [];
     if (blocks.length === 0) {
@@ -186,8 +193,11 @@ export class BlockService {
         let block = blocks[i];
         const mb = BitUtil.base16ToBytes(block);
         const parsedBlock = BlockUtil.parseBlock(mb);
-        const [res, err] = await this.archiveNodeService.handleBlock(parsedBlock, mb);
-        if(err!=null) {
+        const [res, err] = await this.archiveNodeService.handleBlock(
+          parsedBlock,
+          mb,
+        );
+        if (err != null) {
           statusArr.push({ status: 'REJECTED', reason: err });
           continue;
         }
@@ -202,5 +212,65 @@ export class BlockService {
     }
     this.log.debug('Returning response: %s', statusArr);
     return statusArr;
+  }
+
+  async push_getTransactions(walletInCaip: string, category: string, firstTs: string, sort: string) {
+    // the value should be the same for SNODE/ANODE
+    // DON'T EDIT THIS UNLESS YOU NEED TO
+    let pageSize = 30;
+    if (StrUtil.isEmpty(firstTs)) {
+      firstTs = '' + DateUtil.currentTimeSeconds();
+    }
+    if (StrUtil.isEmpty(sort)) {
+      sort = 'DESC';
+    }
+    Check.isTrue(sort === 'ASC' || sort === 'DESC', 'invalid sort');
+    Check.isTrue(pageSize > 0 && pageSize <= 1000, 'invalid pageSize');
+    const isFirstQuery = StrUtil.isEmpty(firstTs);
+    let firstTsSeconds = DateUtil.parseUnixFloatOrFail(firstTs);
+    let firstTsMillis = DateUtil.unixFloatToMillis(firstTsSeconds);
+    Check.isTrue(isFirstQuery || firstTsSeconds != null);
+    const comparator = sort === 'ASC' ? '>' : '<';
+    let sql = `select ts, txn_hash, data_as_json
+     from "Transaction" 
+     where category=$1 and sender=$2 
+     ${isFirstQuery ? '' : `and ts ${comparator} $3`}
+     order by ts ${sort}
+     FETCH FIRST ${pageSize} ROWS WITH TIES`;
+    this.log.debug('query: %s', sql);
+    const rows = await this.prisma.$queryRawUnsafe<
+      Array<{ ts: BigInt; txn_hash: string, data_as_json: any }>
+    >(
+      sql,
+      category,
+      walletInCaip,
+      firstTsMillis
+    );
+    const itemsArr = rows.map((row) => {
+      let tx:{ fee: string, data: string, type: number, sender: string, category: string, recipientsList: string} = row.data_as_json.tx;
+      let dataAsBase16 = BitUtil.base64ToBase16(tx.data);
+      let tsAsUnixFloatStr = NumUtil.toString(DateUtil.millisToUnixFloat(Number(row.ts)));
+      return {
+        ns: tx.category,
+        skey: row.txn_hash,
+        ts: tsAsUnixFloatStr,
+        payload: {
+          data: dataAsBase16,
+          hash: row.txn_hash,
+          type: tx.type,
+          sender: tx.sender,
+          category: tx.category,
+          recipientsList: tx.recipientsList
+        }
+      };
+    });
+    for (const row of itemsArr) {
+      this.log.debug('row %o', row);
+    }
+    let lastTs = itemsArr.length == 0 ? null : itemsArr[itemsArr.length - 1].ts
+    return {
+      items: itemsArr,
+      lastTs: lastTs
+    }
   }
 }

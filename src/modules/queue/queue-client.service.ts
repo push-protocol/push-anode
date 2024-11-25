@@ -66,11 +66,11 @@ export class QueueClient {
           lastOffset, // Pass `lastOffset` as a number
         );
 
-        console.log('\n\n\n');
-
-        console.log(reply);
-
-        console.log('\n\n\n');
+        if (reply != null) {
+          console.log('\n\n\n');
+          console.log(reply);
+          console.log('\n\n\n');
+        }
 
         if (!reply || reply.items?.length === 0) {
           break;

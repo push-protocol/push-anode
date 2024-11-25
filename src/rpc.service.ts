@@ -3,10 +3,14 @@ import { RpcHandler } from '@klerick/nestjs-json-rpc';
 import { BlockService } from './modules/block/block.service';
 import { PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
 import { TxService } from './modules/tx/tx.service';
+import { Logger } from 'winston';
+import { WinstonUtil } from './utilz/winstonUtil';
 
 @RpcHandler()
 @Injectable()
 export class RpcService {
+  private log: Logger = WinstonUtil.newLog(RpcService);
+
   constructor(
     private readonly blockService: BlockService,
     private readonly txService: TxService,
@@ -262,7 +266,7 @@ export class RpcService {
     return { success: 'ok' };
   }
 
-/*
+  /*
 ex
 
 req:
@@ -290,7 +294,6 @@ resp:
     }
     return await this.blockService.push_putBlockHash(hashes);
   }
-
 
   /*
   ex
@@ -325,5 +328,15 @@ resp:
     return await this.blockService.push_putBlock(blocks);
     // console.log('Result:', result);
     // return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
+
+  async push_getTransactions(walletInCaip: string, category: string, timestamp: string, sort: string): Promise<object> {
+    try {
+      let result = await this.blockService.push_getTransactions(walletInCaip, category, timestamp, sort);
+      return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+    } catch (e) {
+      this.log.error(e);
+      throw e;
+    }
   }
 }
