@@ -249,7 +249,7 @@ export class BlockService {
     const itemsArr = rows.map((row) => {
       let tx:{ fee: string, data: string, type: number, sender: string, category: string, recipientsList: string} = row.data_as_json.tx;
       let dataAsBase16 = BitUtil.base64ToBase16(tx.data);
-      let tsAsUnixFloatStr = NumUtil.toString(DateUtil.millisToUnixFloat(Number(row.ts)));
+      let tsAsUnixFloatStr = NumUtil.toString(Number(row.ts));
       return {
         ns: tx.category,
         skey: row.txn_hash,
