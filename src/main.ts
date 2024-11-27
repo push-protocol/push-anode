@@ -38,7 +38,29 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+  let PORT = EnvLoader.getPropertyAsNumber("PORT", 3000);
+  await app.listen(PORT);
 
-  await app.listen(EnvLoader.getPropertyAsNumber("PORT", 3000));
+  let artwork =
+    `    
+ ____            _          _             _     _            _ 
+|  _ \\ _   _ ___| |__      / \\   _ __ ___| |__ (_)_   ____ _| |
+| |_) | | | / __| '_ \\    / _ \\ | '__/ __| '_ \\| \\ \\ / / _\` | |
+|  __/| |_| \\__ \\ | | |  / ___ \\| | | (__| | | | |\\ V / (_| | |
+|_|  _ \\__,_|___/_| |_| /_/   \\_\\_|  \\___|_| |_|_| \\_/ \\__,_|_|
+| \\ | | ___   __| | ___                                        
+|  \\| |/ _ \\ / _\` |/ _ \\                                       
+| |\\  | (_) | (_| |  __/                                       
+|_| \\_|\\___/ \\__,_|\\___|                                                                                      
+`;
+
+  console.log(`
+      ################################################
+      ${artwork}
+      🛡️  Server listening on port: ${PORT} 🛡️
+      ################################################
+    `);
+
+
 }
 bootstrap();
