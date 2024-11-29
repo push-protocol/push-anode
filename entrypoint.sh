@@ -6,7 +6,7 @@ if [ -z "$DATABASE_URL" ]; then
   # 2 prisma orm config
   # 3 k8s script passes this
   # for docker we pass only user/pass/host/db
-  DATABASE_URL="postgres://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/${DB_NAME}"
+  DATABASE_URL="postgres://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${DB_NAME}"
   export DATABASE_URL
 fi
 
