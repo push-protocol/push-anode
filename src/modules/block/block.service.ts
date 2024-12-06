@@ -12,6 +12,7 @@ import { StrUtil } from '../../utilz/strUtil';
 import { DateUtil } from '../../utilz/dateUtil';
 import { Check } from '../../utilz/check';
 import { NumUtil } from '../../utilz/numUtil';
+import { CaipAddr, ChainUtil } from '../../utilz/chainUtil';
 
 @Injectable()
 export class BlockService {
@@ -224,6 +225,7 @@ export class BlockService {
     if (StrUtil.isEmpty(sort)) {
       sort = 'DESC';
     }
+    Check.isTrue(ChainUtil.isFullCAIPAddress(walletInCaip), 'invalid wallet, only caip10 format is supported' + walletInCaip);
     Check.isTrue(sort === 'ASC' || sort === 'DESC', 'invalid sort');
     Check.isTrue(pageSize > 0 && pageSize <= 1000, 'invalid pageSize');
     const isFirstQuery = StrUtil.isEmpty(firstTs);
@@ -231,10 +233,12 @@ export class BlockService {
     let firstTsMillis = DateUtil.unixFloatToMillis(firstTsSeconds);
     Check.isTrue(isFirstQuery || firstTsSeconds != null);
     const comparator = sort === 'ASC' ? '>' : '<';
+    const recipientJson = JSON.stringify({ recipients: [{ address: walletInCaip }] });
+
     let sql = `select ts, txn_hash, data_as_json
      from "Transaction" 
-     where category=$1 and sender=$2 
-     ${isFirstQuery ? '' : `and ts ${comparator} $3`}
+     where category=$1 and (sender=$2 OR recipients @> $3::jsonb) 
+     ${isFirstQuery ? '' : `and ts ${comparator} $4`}
      order by ts ${sort}
      FETCH FIRST ${pageSize} ROWS WITH TIES`;
     this.log.debug('query: %s', sql);
@@ -242,9 +246,7 @@ export class BlockService {
       Array<{ ts: BigInt; txn_hash: string, data_as_json: any }>
     >(
       sql,
-      category,
-      walletInCaip,
-      firstTsMillis
+      category, walletInCaip, recipientJson, firstTsMillis
     );
     const itemsArr = rows.map((row) => {
       let tx:{ fee: string, data: string, type: number, sender: string, category: string, recipientsList: string} = row.data_as_json.tx;

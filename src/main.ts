@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { StrUtil } from './utilz/strUtil';
+import { json } from 'body-parser';
 
 function fixDatabaseUrl() {
   if (StrUtil.isEmpty(process.env.DATABASE_URL)) {
@@ -24,6 +25,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new WinstonLoggerService(),
   });
+  const MAX_HTTP_PAYLOAD = EnvLoader.getPropertyOrDefault('MAX_HTTP_PAYLOAD', '20mb');
+  app.use(json({ limit: MAX_HTTP_PAYLOAD }));
 
   app.enableCors({
     origin: '*', // Specify the client origin or use '*' for wide open access
