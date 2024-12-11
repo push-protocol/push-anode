@@ -258,13 +258,13 @@ export class TxService {
   }
 
   async getDailyTransactions(): Promise<number> {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Set time to midnight for today's start
+    const past24Hours = new Date();
+    past24Hours.setHours(past24Hours.getHours() - 24); // Set time to 24 hours ago
 
     return this.prisma.transaction.count({
       where: {
         ts: {
-          gte: todayStart.getTime(),
+          gte: past24Hours.getTime(), // Use timestamp from 24 hours ago
         },
       },
     });
