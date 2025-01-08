@@ -14,7 +14,8 @@ import {
   InputJsonObject,
 } from '@prisma/client/runtime/library';
 import { Tuple } from '../../utilz/tuple';
-
+import { BlockStoredEvent } from '../websockets/types';
+import { EventBroadcaster } from '../websockets/eventBroadcaster';
 type Transaction = {
   ts?: bigint | number;
   txn_hash: string;
@@ -31,9 +32,11 @@ type Transaction = {
 @Injectable()
 export class ArchiveNodeService implements Consumer<QItem> {
 
-  constructor(private prisma: PrismaService,
-              private valContractState: ValidatorContractState) {
-  }
+  constructor(
+    private prisma: PrismaService,
+    private valContractState: ValidatorContractState,
+    private eventBroadcaster: EventBroadcaster
+  ) {}
 
   public async accept(item: QItem): Promise<boolean> {
     try {
@@ -98,6 +101,14 @@ export class ArchiveNodeService implements Consumer<QItem> {
 
       // Insert transactions into the database
       await this.prisma.transaction.createMany({ data: transactionsData });
+
+      // Broadcast the BLOCK_STORED event
+      const blockStoredEvent: BlockStoredEvent = {
+        type: 'BLOCK_STORED',
+        data: blockData
+      };
+      
+      await this.eventBroadcaster.broadcast(blockStoredEvent);
 
       console.log('Block and transactions inserted:', blockHash);
       return [true, null];

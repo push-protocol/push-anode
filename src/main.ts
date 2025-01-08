@@ -8,6 +8,7 @@ import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { StrUtil } from './utilz/strUtil';
 import { json } from 'body-parser';
+import { ArchiveNodeWebSocketServer } from './modules/websockets/websockerServer';
 
 function fixDatabaseUrl() {
   if (StrUtil.isEmpty(process.env.DATABASE_URL)) {
@@ -42,7 +43,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
   let PORT = EnvLoader.getPropertyAsNumber("PORT", 3000);
-  await app.listen(PORT);
+  const server = await app.listen(PORT);
+
+  // Initialize WebSocket server with the HTTP server
+  const wsServer = app.get(ArchiveNodeWebSocketServer);
+  await wsServer.initialize(app);
+  
 
   let artwork =
     `    
