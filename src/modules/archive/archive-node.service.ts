@@ -107,8 +107,12 @@ export class ArchiveNodeService implements Consumer<QItem> {
         type: 'BLOCK_STORED',
         data: blockData
       };
-      
+      console.log('***********************************************************************************************************************************************************************');
+      console.log('Broadcasting block stored event:', blockStoredEvent);
       await this.eventBroadcaster.broadcast(blockStoredEvent);
+      console.log('***********************************************************************************************************************************************************************');
+      
+      
 
       console.log('Block and transactions inserted:', blockHash);
       return [true, null];
