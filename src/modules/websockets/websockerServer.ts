@@ -6,27 +6,29 @@ import { EventBroadcaster } from './eventBroadcaster';
 import { ErrorHandler } from './errorHandler';
 import { WSMessage } from './types';
 import { Server } from 'http';
+import { randomBytes } from 'crypto';
 import { INestApplication, Injectable } from '@nestjs/common';
 import { OnApplicationShutdown } from '@nestjs/common';
+import { ValidatorContractState } from '../validator/validator-contract-state.service';
+import { EthUtil } from '../../utilz/ethUtil';
+import { BitUtil } from '../../utilz/bitUtil';
 
 @Injectable()
-export class ArchiveNodeWebSocketServer implements OnApplicationShutdown  {
+export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
     private wss: WebSocketServer;
     private readonly log = WinstonUtil.newLog("ArchiveNodeWebSocketServer");
-    private readonly HEARTBEAT_INTERVAL = 30000; // 30 seconds
-    private readonly CONNECTION_TIMEOUT = 35000; // 35 seconds
-    private heartbeatInterval: NodeJS.Timeout;
+    private nonceMap: Map<string, string> = new Map(); // Store nonces for pending authentications
 
     constructor(
         private readonly subscriptionHandler: SubscriptionHandler,
         private readonly connectionManager: ConnectionManager,
         private readonly eventBroadcaster: EventBroadcaster,
-        private readonly errorHandler: ErrorHandler
+        private readonly errorHandler: ErrorHandler,
+        private readonly validatorContractState: ValidatorContractState
     ) {}
 
-    async onApplicationShutdown(signal?: string) {
-        this.log.info(`Shutting down WebSocket server (signal: ${signal})`);
-        await this.shutdown();
+    private generateNonce(): string {
+        return randomBytes(32).toString('hex');
     }
 
     async initialize(app: INestApplication) {
@@ -40,53 +42,143 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown  {
         }
 
         try {
-            this.wss = new WebSocketServer({ server });
-            
-            this.wss.on('connection', (ws: WebSocket) => {
-                this.handleNewConnection(ws);
+            this.wss = new WebSocketServer({ 
+                server,
+                verifyClient: (info, callback) => {
+                    // Accept initial connection without verification
+                    callback(true);
+                }
             });
+            
+            this.wss.on('connection', (ws: WebSocket, req: any) => {
+                const validatorAddress = req.headers['validator-address'];
+                
+                // Set up authentication timeout
+                const authTimeout = setTimeout(() => {
+                    if (this.nonceMap.has(validatorAddress)) {
+                        this.log.warn(`Authentication timeout for ${validatorAddress}`);
+                        ws.close(4001, 'Authentication timeout');
+                        this.nonceMap.delete(validatorAddress);
+                    }
+                }, 30000); // 30 seconds timeout
 
-            // Start heartbeat interval
-            this.heartbeatInterval = setInterval(() => {
-                this.checkConnections();
-            }, this.HEARTBEAT_INTERVAL);
+                // Generate and send nonce immediately
+                const nonce = this.generateNonce();
+                this.nonceMap.set(validatorAddress, nonce);
+                this.log.info(`Sending auth challenge to ${validatorAddress}: ${nonce}`);
+                ws.send(JSON.stringify({ type: 'AUTH_CHALLENGE', nonce }));
+
+                // Handle messages
+                ws.on('message', async (data: Buffer) => {
+                    try {
+                        const message = JSON.parse(data.toString());
+                        
+                        // Handle health check
+                        if (message.type === 'HEALTH_CHECK') {
+                            this.log.info(`Received health check from ${validatorAddress}: ${message.timestamp}`);
+                            ws.send(JSON.stringify({
+                                type: 'HEALTH_CHECK_RESPONSE',
+                                timestamp: message.timestamp
+                            }));
+                            this.log.info(`Sending health check response to ${validatorAddress}: ${message.timestamp}`);
+                            ws.close(1000, 'Health check complete');
+                            clearTimeout(authTimeout);
+                            this.nonceMap.delete(validatorAddress);
+                            return;
+                        }
+
+                        // Handle auth response
+                        if (message.type === 'AUTH_RESPONSE') {
+                            const { signature, validatorAddress: claimedAddress, nonce: receivedNonce } = message;
+                            const storedNonce = this.nonceMap.get(claimedAddress);
+
+                            if (!storedNonce || storedNonce !== receivedNonce) {
+                                throw new Error('Invalid nonce');
+                            }
+
+                            // Recover address from signature
+                            const recoveredAddress = await EthUtil.recoverAddressFromMsg(
+                                BitUtil.base16ToBytes(storedNonce),
+                                BitUtil.base16ToBytes(signature)
+                            );
+
+                            // Verify recovered address matches claimed address
+                            if (recoveredAddress.toLowerCase() !== claimedAddress.toLowerCase()) {
+                                throw new Error('Signature verification failed');
+                            }
+
+                            // Verify validator in contract
+                            const isValid = await this.validatorContractState.isActiveValidator(recoveredAddress);
+                            if (!isValid) {
+                                throw new Error('Not an active validator');
+                            }
+
+                            this.log.info(`Authentication successful for ${validatorAddress}`);
+
+                            // Cleanup and proceed
+                            clearTimeout(authTimeout);
+                            this.nonceMap.delete(claimedAddress);
+
+                            // Proceed with connection
+                            this.handleNewConnection(ws, claimedAddress);
+                            this.log.info(`Connection established for ${validatorAddress}. Sending AUTH_SUCCESS`);
+                            ws.send(JSON.stringify({ type: 'AUTH_SUCCESS' }));
+                        }
+                    } catch (error) {
+                        this.log.warn(`Message processing failed for ${validatorAddress}: ${error.message}`);
+                        ws.close(4003, 'Message processing failed');
+                        this.nonceMap.delete(validatorAddress);
+                        clearTimeout(authTimeout);
+                    }
+                });
+            });
 
             const addr = server.address();
             const port = typeof addr === 'string' ? addr : addr?.port;
+            this.log.info(`WebSocket Server listening on port: ${port}`);
 
-            let artwork =
-    `    
- ____            _           _             _     _            
-|  _ \\ _   _ ___| |__      / \\   _ __ ___| |__ (_)_   _____ 
-| |_) | | | / __| '_ \\    / _ \\ | '__/ __| '_ \\| \\ \\ / / _ \\
-|  __/| |_| \\__ \\ | | |  / ___ \\| | | (__| | | | |\\ V /  __/
-|_|   \\__,_|___/_| |_| /_/   \\_\\_|  \\___|_| |_|_| \\_/ \\___|
-__        __   _    ____            _        _   
-\\ \\      / /__| |__/ ___|  ___  ___| | _____| |_ 
- \\ \\ /\\ / / _ \\ '_ \\___ \\ / _ \\/ __| |/ / _ \\ __|
-  \\ V  V /  __/ |_) |__) |  __/ (__|   <  __/ |_ 
-   \\_/\\_/ \\___|_.__/____/ \\___|\\___|_|\\_\\___|\\__|
-`;
-
-            console.log(`
-                ################################################
-                ${artwork}
-                🛡️ WebSocket Server listening on port: ${port} 🛡️
-                ################################################
-            `);
         } catch (error) {
             this.log.error('Failed to initialize WebSocket server:', error);
             throw error;
         }
     }
 
-    async shutdown() {
-        const subscribers = this.subscriptionHandler.getSubscribers();
+    private handleNewConnection(ws: WebSocket, validatorAddress: string) {
+        this.log.info(`New connection from validator: ${validatorAddress}`);
+        
+        // Add connection to manager
+        this.connectionManager.addConnection(validatorAddress, ws);
+        
+        ws.on('message', async (data: Buffer) => {
+            try {
+                const message = JSON.parse(data.toString()) as WSMessage;
+                
+                if (message.type === 'SUBSCRIBE') {
+                    if (message.nodeId !== validatorAddress) {
+                        this.log.warn(`Message nodeId mismatch for ${validatorAddress}`);
+                        ws.close(1008, 'Invalid nodeId');
+                        return;
+                    }
+                }
+                await this.handleMessage(ws, message);
+            } catch (error) {
+                this.errorHandler.handleConnectionError(ws, error);
+            }
+        });
 
-        // Clear heartbeat interval
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-        }
+        ws.on('error', (error) => {
+            this.log.error(`WebSocket error for ${validatorAddress}:`, error);
+            this.errorHandler.handleConnectionError(ws, error);
+        });
+
+        ws.on('close', () => {
+            this.log.info(`Connection closed for validator: ${validatorAddress}`);
+            this.connectionManager.removeConnection(validatorAddress);
+        });
+    }
+
+    async onApplicationShutdown() {
+        const subscribers = this.subscriptionHandler.getSubscribers();
 
         // Close all connections
         for (const [nodeId, info] of subscribers) {
@@ -98,72 +190,24 @@ __        __   _    ____            _        _
         }
     }
 
-    private handleNewConnection(ws: WebSocket) {
-        ws.on('pong', () => {
-            const subscriber = this.subscriptionHandler.findSubscriberByWebSocket(ws);
-            if (subscriber) {
-                this.subscriptionHandler.updateLastPong(subscriber.nodeId);
-            }
-        });
-
-        // Handle disconnection
-        ws.on('close', () => {
-            this.handleDisconnection(ws);
-        });
-
-        // Handle errors
-        ws.on('error', (error) => {
-            this.log.error('WebSocket error:', error);
-            this.handleDisconnection(ws);
-        });
-
-        ws.on('message', async (data: Buffer) => {
-            try {
-                const message = JSON.parse(data.toString()) as WSMessage;
-                await this.handleMessage(ws, message);
-            } catch (error) {
-                this.errorHandler.handleConnectionError(ws, error);
-            }
-        });
-    }
-
-    private checkConnections() {
-        console.log("Checking connections...");
-        const now = Date.now();
-        const subscribers = this.subscriptionHandler.getSubscribers();
-
-        for (const [nodeId, info] of subscribers) {
-            // Check if connection has timed out
-            if (info.lastPong && (now - info.lastPong > this.CONNECTION_TIMEOUT)) {
-                this.log.warn(`Connection timeout for node ${nodeId}`);
-                info.ws.terminate();
-                this.subscriptionHandler.removeSubscriber(nodeId);
-                continue;
-            }
-
-            // Send ping
-            try {
-                info.ws.ping();
-            } catch (error) {
-                this.log.error(`Failed to ping node ${nodeId}:`, error);
-                info.ws.terminate();
-                this.subscriptionHandler.removeSubscriber(nodeId);
-            }
-        }
-    }
-
-    private handleDisconnection(ws: WebSocket) {
-        const subscriber = this.subscriptionHandler.findSubscriberByWebSocket(ws);
-        if (subscriber) {
-            this.log.info(`Node ${subscriber.nodeId} disconnected`);
-            this.subscriptionHandler.removeSubscriber(subscriber.nodeId);
-        }
-    }
-
     private async handleMessage(ws: WebSocket, message: WSMessage) {
         switch (message.type) {
             case 'SUBSCRIBE':
-                await this.subscriptionHandler.handleSubscriptionRequest(ws, message);
+                if ('nodeType' in message && 'events' in message) {
+                    // Validate if the node is active
+                    if (!this.validatorContractState.isActiveValidator(message.nodeId)) {
+                        throw new Error('Invalid validator node');
+                    }
+                    
+                    await this.subscriptionHandler.handleSubscriptionRequest(ws, {
+                        ...message,
+                        type: 'SUBSCRIBE',
+                        nodeType: 'VALIDATOR' as const,
+                        events: message.events as string[]
+                    });
+                } else {
+                    this.errorHandler.handleInvalidMessage(ws, 'Invalid subscription request format');
+                }
                 break;
             default:
                 this.errorHandler.handleInvalidMessage(ws, 'Unknown message type');

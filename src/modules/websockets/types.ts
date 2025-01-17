@@ -44,8 +44,22 @@ export interface Block {
     transactions: any[]; // adjust this type based on your transaction structure
 }
 
-export type WSMessage = 
-    | SubscriptionRequest 
-    | SubscriptionResponse 
-    | BlockStoredEvent 
-    | ErrorResponse;
+export interface HeartbeatMessage {
+    type: 'PING' | 'PONG';
+    timestamp: number;
+}
+
+export type WSMessageType = 
+    | 'SUBSCRIBE' 
+    | 'SUBSCRIPTION_CONFIRMED'
+    | 'BLOCK_STORED'
+    | 'ERROR'
+    | 'PING'
+    | 'PONG'
+    | 'HEARTBEAT';
+
+export interface WSMessage {
+    type: 'SUBSCRIBE' | 'UNSUBSCRIBE' | 'MESSAGE';
+    nodeId: string;
+    signature: string;
+}

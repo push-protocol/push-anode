@@ -5,8 +5,10 @@ import { SubscriptionHandler } from './subscriptionHandler';
 import { ConnectionManager } from './connectionManager';
 import { ErrorHandler } from './errorHandler';
 import { MetricsService } from './metricsService';
+import { ValidatorModule } from '../validator/validator.module';
 
 @Module({
+    imports: [ValidatorModule],
     providers: [
         ArchiveNodeWebSocketServer,
         EventBroadcaster,
@@ -17,4 +19,5 @@ import { MetricsService } from './metricsService';
     ],
     exports: [ArchiveNodeWebSocketServer, EventBroadcaster]
 })
+
 export class WebSocketModule {}
