@@ -10,3 +10,14 @@ export interface BlockWithTransactions {
   transactions: TransactionDTO[];
   totalNumberOfTxns: number;
 }
+
+
+export interface BlockResponseInternal {
+  blockData: string;
+};
+
+export interface BlockHashResponseInternal {
+  blockHash: string;
+  blockSize: number;
+  ts: bigint;
+};

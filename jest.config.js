@@ -1,6 +1,4 @@
-export default {
-  // Your Jest configuration here
-  // e.g., preset: 'ts-jest',
+module.exports = {
   testEnvironment: 'node',
   transform: {
     '^.+\\.ts$': 'ts-jest',

@@ -95,7 +95,7 @@ export class WinstonUtil {
     const levelFirstChar = level == null ? '' : level.toUpperCase()[0]
     const date = DateTime.now()
     const formattedDate = date.toFormat('yyMMdd HHmmss')
-    const className = info.className
+    const className = info.className as string
     let formattedClassName: string
     if (StrUtil.isEmpty(className)) {
       formattedClassName = ' '

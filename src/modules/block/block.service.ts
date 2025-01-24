@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BlockWithTransactions } from './dto/block.transactions.dto';
-import { PaginatedBlocksResponse } from './dto/paginated.blocks.response.dto';
+import {
+  BlockHashResponseInternal,
+  BlockResponseInternal,
+  BlockWithTransactions,
+} from './dto/block.transactions.dto';
+import {
+  PaginatedBlockHashResponseInternal,
+  PaginatedBlocksResponse,
+  PaginatedBlocksResponseInternal,
+} from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
 import { ArchiveNodeService } from '../archive/archive-node.service';
 import { BitUtil } from '../../utilz/bitUtil';
@@ -98,6 +106,79 @@ export class BlockService {
       blocks: responseBlocks,
       lastTs,
       totalPages,
+    };
+  }
+
+  async push_getBlockHashByTimeInternal(
+    startTime: number,
+    direction: string,
+    showDetails: boolean,
+    pageSize: number,
+    page: number = 1, // Default page number is 1
+  ): Promise<PaginatedBlockHashResponseInternal> {
+    const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
+
+    const where = {
+      ts: {
+        [orderByDirection === 'asc' ? 'gte' : 'lte']: startTime,
+      },
+    };
+
+    const totalBlocks = await this.prisma.block.count({
+      where,
+    });
+
+    const totalPages = Math.ceil(totalBlocks / pageSize);
+    const skip = (page - 1) * pageSize;
+
+    const blockHashes = await this.prisma.block.findMany({
+      select: { block_hash: true, ts: true },
+      where,
+      orderBy: { ts: orderByDirection },
+      take: pageSize,
+      skip: skip, // Skip based on the page number
+    });
+
+    const lastTs = blockHashes.length
+      ? blockHashes[blockHashes.length - 1].ts
+      : BigInt(0);
+
+    const responseBlocks: BlockHashResponseInternal[] = blockHashes.map(
+      (block: { block_hash: string; ts: bigint }) => {
+        const blockSize = block.block_hash.length;
+
+        return {
+          blockHash: block.block_hash,
+          blockSize,
+          ts: block.ts,
+        };
+      },
+    );
+
+    return {
+      blocks: responseBlocks,
+      lastTs,
+      totalPages,
+    };
+  }
+
+  async push_internal_getBlocksByBlockHashes(
+    blockHashes: string[],
+  ): Promise<PaginatedBlocksResponseInternal> {
+    const blocks = await this.prisma.block.findMany({
+      where: { block_hash: { in: blockHashes } },
+    });
+
+    const responseBlocks: Omit<BlockResponseInternal, 'ts'>[] = blocks.map(
+      (block: Block) => {
+        return {
+          blockData: block.data.toString('hex'),
+        };
+      },
+    );
+
+    return {
+      blocks: responseBlocks,
     };
   }
 
@@ -215,7 +296,12 @@ export class BlockService {
     return statusArr;
   }
 
-  async push_getTransactions(walletInCaip: string, category: string, firstTs: string, sort: string) {
+  async push_getTransactions(
+    walletInCaip: string,
+    category: string,
+    firstTs: string,
+    sort: string,
+  ) {
     // the value should be the same for SNODE/ANODE
     // DON'T EDIT THIS UNLESS YOU NEED TO
     let pageSize = 30;
@@ -225,7 +311,10 @@ export class BlockService {
     if (StrUtil.isEmpty(sort)) {
       sort = 'DESC';
     }
-    Check.isTrue(ChainUtil.isFullCAIPAddress(walletInCaip), 'invalid wallet, only caip10 format is supported' + walletInCaip);
+    Check.isTrue(
+      ChainUtil.isFullCAIPAddress(walletInCaip),
+      'invalid wallet, only caip10 format is supported' + walletInCaip,
+    );
     Check.isTrue(sort === 'ASC' || sort === 'DESC', 'invalid sort');
     Check.isTrue(pageSize > 0 && pageSize <= 1000, 'invalid pageSize');
     const isFirstQuery = StrUtil.isEmpty(firstTs);
@@ -233,7 +322,9 @@ export class BlockService {
     let firstTsMillis = DateUtil.unixFloatToMillis(firstTsSeconds);
     Check.isTrue(isFirstQuery || firstTsSeconds != null);
     const comparator = sort === 'ASC' ? '>' : '<';
-    const recipientJson = JSON.stringify({ recipients: [{ address: walletInCaip }] });
+    const recipientJson = JSON.stringify({
+      recipients: [{ address: walletInCaip }],
+    });
 
     let sql = `select ts, txn_hash, data_as_json
      from "Transaction" 
@@ -243,13 +334,17 @@ export class BlockService {
      FETCH FIRST ${pageSize} ROWS WITH TIES`;
     this.log.debug('query: %s', sql);
     const rows = await this.prisma.$queryRawUnsafe<
-      Array<{ ts: BigInt; txn_hash: string, data_as_json: any }>
-    >(
-      sql,
-      category, walletInCaip, recipientJson, firstTsMillis
-    );
+      Array<{ ts: BigInt; txn_hash: string; data_as_json: any }>
+    >(sql, category, walletInCaip, recipientJson, firstTsMillis);
     const itemsArr = rows.map((row) => {
-      let tx:{ fee: string, data: string, type: number, sender: string, category: string, recipientsList: string} = row.data_as_json.tx;
+      let tx: {
+        fee: string;
+        data: string;
+        type: number;
+        sender: string;
+        category: string;
+        recipientsList: string;
+      } = row.data_as_json.tx;
       let dataAsBase16 = BitUtil.base64ToBase16(tx.data);
       let tsAsUnixFloatStr = NumUtil.toString(Number(row.ts));
       return {
@@ -262,18 +357,18 @@ export class BlockService {
           type: tx.type,
           sender: tx.sender,
           category: tx.category,
-          recipientsList: tx.recipientsList
-        }
+          recipientsList: tx.recipientsList,
+        },
       } as Item;
     });
     for (const row of itemsArr) {
       this.log.debug('row %o', row);
     }
-    let lastTs = itemsArr.length == 0 ? null : itemsArr[itemsArr.length - 1].ts
+    let lastTs = itemsArr.length == 0 ? null : itemsArr[itemsArr.length - 1].ts;
     return {
       items: itemsArr,
-      lastTs: lastTs
-    } as PushGetTransactionsResult
+      lastTs: lastTs,
+    } as PushGetTransactionsResult;
   }
 }
 
@@ -284,17 +379,16 @@ type Payload = {
   sender: string;
   category: string;
   recipientsList: string;
-}
+};
 
 type Item = {
   ns: string;
   skey: string;
   ts: string;
   payload: Payload;
-}
+};
 
 type PushGetTransactionsResult = {
   items: Item[];
   lastTs: string | null;
-}
-
+};

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RpcHandler } from '@klerick/nestjs-json-rpc';
 import { BlockService } from './modules/block/block.service';
-import { PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
+import { PaginatedBlockHashResponseInternal, PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
 import { TxService } from './modules/tx/tx.service';
 import { Logger } from 'winston';
 import { WinstonUtil } from './utilz/winstonUtil';
@@ -39,6 +39,30 @@ export class RpcService {
     const finalPage = page ?? 1; // Default to page 1 if not provided
 
     const result = await this.blockService.push_getBlocksByTime(
+      finalStartTime,
+      finalDirection,
+      finalShowDetails,
+      finalPageSize,
+      finalPage, // Pass the page parameter
+    );
+
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
+
+  async getBlockHashesInternal(
+    startTime?: number,
+    direction?: string,
+    showDetails?: boolean,
+    pageSize?: number,
+    page?: number, // Add page parameter here
+  ): Promise<PaginatedBlockHashResponseInternal> {
+    const finalStartTime = startTime ?? 0;
+    const finalDirection = direction ?? 'DESC';
+    const finalShowDetails = showDetails ?? false;
+    const finalPageSize = pageSize ?? 10;
+    const finalPage = page ?? 1; // Default to page 1 if not provided
+
+    const result = await this.blockService.push_getBlockHashByTimeInternal(
       finalStartTime,
       finalDirection,
       finalShowDetails,
