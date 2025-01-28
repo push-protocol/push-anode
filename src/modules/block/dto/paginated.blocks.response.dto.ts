@@ -13,12 +13,12 @@ export interface PaginatedBlockHashesResponse {
 }
 
 
-export interface PaginatedBlocksResponseInternal {
+export interface BlocksResponseInternal {
   blocks: BlockResponseInternal[];
 }
 
 export interface PaginatedBlockHashResponseInternal {
-  blocks: BlockHashResponseInternal[];
+  blockHashes: BlockHashResponseInternal[];
   lastTs: bigint;
   totalPages: number;
 }

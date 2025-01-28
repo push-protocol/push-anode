@@ -128,7 +128,7 @@ export class ArchiveNodeService implements Consumer<QItem> {
     return ObjectHasher.hashToSha256(block);
   }
 
-  private async isBlockAlreadyStored(blockHash: string): Promise<boolean> {
+  public async isBlockAlreadyStored(blockHash: string): Promise<boolean> {
     const block = await this.prisma.block.findUnique({
       where: { block_hash: blockHash },
     });

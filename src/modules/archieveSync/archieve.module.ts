@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ArchieveSync } from './archieveSync.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';

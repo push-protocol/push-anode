@@ -8,7 +8,7 @@ import {
 import {
   PaginatedBlockHashResponseInternal,
   PaginatedBlocksResponse,
-  PaginatedBlocksResponseInternal,
+  BlocksResponseInternal,
 } from './dto/paginated.blocks.response.dto';
 import { Block, Prisma, Transaction } from '@prisma/client';
 import { ArchiveNodeService } from '../archive/archive-node.service';
@@ -116,6 +116,9 @@ export class BlockService {
     pageSize: number,
     page: number = 1, // Default page number is 1
   ): Promise<PaginatedBlockHashResponseInternal> {
+    if (page <= 0) {
+      page = 1;
+    }
     const orderByDirection = direction === 'ASC' ? 'asc' : 'desc';
 
     const where = {
@@ -156,23 +159,34 @@ export class BlockService {
     );
 
     return {
-      blocks: responseBlocks,
+      blockHashes: responseBlocks,
       lastTs,
       totalPages,
     };
   }
 
-  async push_internal_getBlocksByBlockHashes(
+  async push_getBlocksByBlockHashesInternal(
     blockHashes: string[],
-  ): Promise<PaginatedBlocksResponseInternal> {
+  ): Promise<BlocksResponseInternal> {
     const blocks = await this.prisma.block.findMany({
       where: { block_hash: { in: blockHashes } },
+      select: {
+        block_hash: true,
+        data: true,
+      },
     });
 
-    const responseBlocks: Omit<BlockResponseInternal, 'ts'>[] = blocks.map(
-      (block: Block) => {
+    // Create a map of block_hash to block data for easier lookup
+    const blockMap = new Map(
+      blocks.map((block) => [block.block_hash, block.data]),
+    );
+
+    // Map through the requested hashes, not the found blocks
+    const responseBlocks: Omit<BlockResponseInternal, 'ts'>[] = blockHashes.map(
+      (hash) => {
+        const blockData = blockMap.get(hash);
         return {
-          blockData: block.data.toString('hex'),
+          blockData: blockData ? blockData.toString('hex') : null,
         };
       },
     );
@@ -269,7 +283,6 @@ export class BlockService {
     if (blocks.length === 0) {
       return statusArr;
     }
-    const prisma = new PrismaService();
     for (let i = 0; i < blocks.length; i++) {
       try {
         let block = blocks[i];

@@ -2,6 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   NodeInfo,
+  NodeStatus,
+  NodeType,
   ValidatorContractState,
 } from '../validator/validator-contract-state.service';
 import { Logger } from 'winston';
@@ -14,21 +16,72 @@ import { ArchiveNodeService } from '../archive/archive-node.service';
 import { BitUtil } from '../../utilz/bitUtil';
 import { Block } from '../../generated/push/block_pb';
 import { BlockUtil } from '../validator/blockUtil';
-type ANodeClientInfo = typeof Prisma.AnodeSyncInfoScalarFieldEnum;
+import { Mutex } from 'async-mutex';
+import schedule from 'node-schedule';
+import { EnvLoader } from '../../utilz/envLoader';
 
 @Injectable()
 export class ArchieveSync implements OnModuleInit {
   private log: Logger = WinstonUtil.newLog(ArchieveSync);
   private nodeInfo: Map<string, NodeInfo> = new Map<string, NodeInfo>();
   private anodeClientMap = new Map<string, ANodeClient>();
+  private syncMutex = new Mutex();
+  private isSyncing = false;
+  public static instance: ArchieveSync;
+  private readonly DELETE_SYNCED_RECORDS_SCHEDULE =
+    EnvLoader.getPropertyOrDefault(
+      'DELETE_SYNCED_RECORDS_SCHEDULE',
+      '0 */12 * * *',
+    );
   constructor(
     private prisma: PrismaService,
     private valContractState: ValidatorContractState,
     private archiveNodeService: ArchiveNodeService,
-  ) {}
+  ) {
+    ArchieveSync.instance = this;
+  }
 
   onModuleInit() {
-    this.initBlockSync();
+    this.deleteSyncedRecords()
+  }
+
+  async deleteSyncedRecords() {
+    const self = this
+    schedule.scheduleJob(
+      this.DELETE_SYNCED_RECORDS_SCHEDULE,
+      async function () {
+        try {
+          self.log.info("Running cron tasks to delete synced records [in every 12 hours]");
+          const records = await self.getAllAnodeSyncInfo();
+          const recordsToDelete = records.filter((record) => record.state == 1);
+          self.log.info("Founds records to be deleted %o", recordsToDelete);
+          await Promise.all(
+            recordsToDelete.map(async (record) => {
+              await self.deleteAnodeSyncInfo({ id: record.id });
+            }),
+          );
+        } catch (error) {
+          console.log(error)
+          self.log.error('Failed to delete synced records', { error });
+          throw error;
+        }
+      },
+    );
+  }
+
+  public static async checkAndStartSyncing(newNode: NodeInfo) {
+    if (
+      newNode.nodeType == NodeType.ANode &&
+      newNode.nodeStatus == NodeStatus.OK
+    ) {
+      void (async () => {
+        try {
+          await this.instance.initBlockSync();
+        } catch (error) {
+          this.instance.log.error('Background pooling error: %s', error);
+        }
+      })();
+    }
   }
   // function to create the mapping of the node
   async getANodeMap(): Promise<void> {
@@ -47,25 +100,27 @@ export class ArchieveSync implements OnModuleInit {
           if (!nodeInfoFromDb) {
             // call the node with just one block and endtime to get an estimate of total blocks
             const cutOffTs = DateUtil.currentTimeMillis();
-            await this.createRecordInAnodeSyncInfo({
+            const recordId = await this.createRecordInAnodeSyncInfo({
               anode_url: node.url,
               offset: 1,
               ts_cutoff: cutOffTs,
               // TODO: delete it as it will be not used
               total_blocks: 0,
             });
-            anodeClient.init(node.url, cutOffTs, 0, 0, 0, cutOffTs);
+            anodeClient.init(node.url, cutOffTs, 1, 0, recordId.id, cutOffTs);
           } else {
-            anodeClient.init(
-              node.url,
-              Number(nodeInfoFromDb.ts_cutoff),
-              Number(nodeInfoFromDb.offset),
-              nodeInfoFromDb.state,
-              nodeInfoFromDb.id,
-              Number(nodeInfoFromDb.ts_cutoff),
-            );
+            if (nodeInfoFromDb.state != 1) {
+              anodeClient.init(
+                node.url,
+                Number(nodeInfoFromDb.ts_cutoff),
+                Number(nodeInfoFromDb.offset),
+                nodeInfoFromDb.state,
+                nodeInfoFromDb.id,
+                Number(nodeInfoFromDb.ts_cutoff),
+              );
+            }
+            this.anodeClientMap.set(node.url, anodeClient);
           }
-          this.anodeClientMap.set(node.url, anodeClient);
         } else {
           this.log.warn('Node without URL found', { node });
         }
@@ -77,84 +132,149 @@ export class ArchieveSync implements OnModuleInit {
       throw error;
     }
   }
-  async parseBlockResponseAndFormSet(blocks: any[]) {
+  parseBlockResponseAndFormSet(blocks: any[]) {
     const blockSet = new Set<string>();
     for (const block of blocks) {
-      blockSet.add(JSON.stringify(block));
+      blockSet.add(block.blockData);
     }
     return blockSet;
   }
-  async initBlockSync() {
+
+  async getBlockHashValidateAndGetFullBlock(anodeClient: ANodeClient) {
     try {
-      if (this.nodeInfo.size === 0) {
-        await this.getANodeMap();
-      }
+      this.log.info(
+        'Getting block hashes from node %s',
+        anodeClient.getAnodeURL(),
+      );
+      const blockHashesResponse = await anodeClient.push_anode_get_blockHash();
+      const blockHashesNotFound: string[] = [];
 
-      while (true) {
-        try {
-          const getBlockPromises = [];
-          for (const [nodeUrl, anodeClient] of this.anodeClientMap) {
-            getBlockPromises.push(anodeClient.push_anode_get_block());
-          }
-
-          const res = await PromiseUtil.allSettled<{
-            blocks: { blockData: string; blockHash: string }[];
-          }>(getBlockPromises);
-
-          // Check if all nodes returned zero blocks
-          const allNodesEmpty = res.every(
-            (result) =>
-              !result.isFullfilled() || result.val.blocks.length === 0,
-          );
-
-          if (allNodesEmpty) {
-            // break
-            break;
-          }
-
-          // Construct a map of unique blocks
-          const blockMap = new Map<string, string>();
-          for (let i = 0; i < res.length; i++) {
-            if (res[i].isFullfilled()) {
-              for (let j = 0; j < res[i].val.blocks.length; j++) {
-                if (!blockMap.has(res[i].val.blocks[j].blockHash))
-                  blockMap.set(
-                    res[i].val.blocks[j].blockHash,
-                    res[i].val.blocks[j].blockData,
-                  );
-              }
-            }
-          }
-
-          // Process blocks
-          const blockPromises = [];
-          for (const [blockHash, blockData] of blockMap) {
-            const blockBase16 = BitUtil.hex0xRemove(blockData).toLowerCase();
-            const blockBytes = BitUtil.base16ToBytes(blockBase16);
-            const block = BlockUtil.parseBlock(blockBytes);
-            blockPromises.push(
-              this.archiveNodeService.handleBlock(block, blockBytes),
+      await Promise.all(
+        blockHashesResponse.blockHashes.map(async (blockHash) => {
+          const blockExists =
+            await this.archiveNodeService.isBlockAlreadyStored(
+              blockHash.blockHash,
             );
+          if (!blockExists) {
+            blockHashesNotFound.push(blockHash.blockHash);
           }
-          await PromiseUtil.allSettled(blockPromises);
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-        } catch (error) {}
+        }),
+      );
+
+      this.log.debug('Blocks not found: %o', blockHashesNotFound);
+
+      if (blockHashesNotFound.length > 0) {
+        const blocks =
+          await anodeClient.getBlockFromBlockHash(blockHashesNotFound);
+        this.log.info('Blocks found: %o', blocks);
+        const blockSet = this.parseBlockResponseAndFormSet(blocks);
+        const blockPromises = [];
+
+        for (const block of blockSet) {
+          const mb = BitUtil.base16ToBytes(block);
+          const parsedBlock = BlockUtil.parseBlock(mb);
+          blockPromises.push(
+            this.archiveNodeService.handleBlock(parsedBlock, mb),
+          );
+        }
+
+        const results = await PromiseUtil.allSettled(blockPromises);
+        this.log.info('Block processing results: %o', results);
+        return {
+          hasProcessedBlocks: true,
+          processedBlocksCount: blockSet.size,
+          success: results.every((result) => result.isFullfilled()),
+        };
       }
-      this.log.info('Block sync complete!!!');
+
+      return {
+        hasProcessedBlocks: false,
+        processedBlocksCount: 0,
+        success: true,
+      };
     } catch (error) {
-      this.log.error('Failed to sync blocks', { error });
-      throw error;
+      this.log.error('Error in getBlockHashValidateAndGetFullBlock %o', {
+        error,
+      });
+      return {
+        hasProcessedBlocks: false,
+        processedBlocksCount: 0,
+        success: false,
+      };
     }
+  }
+  async initBlockSync() {
+    if (this.isSyncing) {
+      this.log.info('Sync already in progress, skipping...');
+      return;
+    }
+
+    // Use the mutex to ensure only one sync process runs
+    await this.syncMutex.runExclusive(async () => {
+      if (this.isSyncing) {
+        return;
+      }
+
+      this.isSyncing = true;
+      try {
+        if (this.nodeInfo.size === 0) {
+          await this.getANodeMap();
+        }
+
+        while (true) {
+          try {
+            const blockValidationPromises = Array.from(
+              this.anodeClientMap.entries(),
+            ).map(([nodeUrl, anodeClient]) =>
+              this.getBlockHashValidateAndGetFullBlock(anodeClient),
+            );
+
+            const results = await PromiseUtil.allSettled(
+              blockValidationPromises,
+            );
+
+            // Check if all operations were successful
+            const allSuccessful = results.every(
+              (result) => result.isFullfilled() && result.val.success,
+            );
+
+            // Check if any blocks were processed
+            const anyBlocksProcessed = results.some(
+              (result) =>
+                result.isFullfilled() && result.val.hasProcessedBlocks,
+            );
+
+            if (allSuccessful && !anyBlocksProcessed) {
+              // If all operations were successful and no blocks were processed,
+              // we can safely break the loop
+              break;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          } catch (error) {
+            this.log.error('Error in sync iteration', { error });
+          }
+        }
+
+        this.log.info('Block sync complete!!!');
+      } catch (error) {
+        this.log.error('Failed to sync blocks', { error });
+        throw error;
+      } finally {
+        this.isSyncing = false;
+      }
+    });
   }
   // function to get the block from each node parallaly with retry logic
   // CRUD functions for archievesync
   async createRecordInAnodeSyncInfo(info: Prisma.anodeSyncInfoCreateInput) {
     try {
+      this.log.info('Creating Anode sync info record %o', info);
       const createdRecord = await this.prisma.anodeSyncInfo.create({
         data: info,
       });
 
-      this.log.info('Created Anode sync info record', {
+      this.log.info('Created Anode sync info record %o', {
         recordId: createdRecord.id,
       });
       return createdRecord;

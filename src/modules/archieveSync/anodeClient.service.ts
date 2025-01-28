@@ -43,6 +43,10 @@ export class ANodeClient {
     this.start_time = _startTime ?? DateUtil.currentTimeMillis();
   }
 
+  getAnodeURL(): string {
+    return this.nodeUrl;
+  }
+
   async getANodeClientInfo(): Promise<Prisma.anodeSyncInfoGetPayload<{}> | null> {
     try {
       if (!this.nodeUrl) {
@@ -97,30 +101,60 @@ export class ANodeClient {
     }
   }
 
-  async push_anode_get_block(info?: {
+  async getBlockFromBlockHash(
+    blockHash: string[],
+  ): Promise<{ blockData: string }[]> {
+    try {
+      this.log.debug(
+        'Calling the node %s to get blocks with blockHash %o',
+        this.nodeUrl,
+        blockHash,
+      );
+      const blocks = await new RpcUtils(
+        this.nodeUrl,
+        'RpcService.getBlocksByHashesInternal',
+        [[blockHash]],
+      ).call();
+      return blocks.data.result.blocks;
+    } catch (error) {}
+  }
+
+  async push_anode_get_blockHash(info?: {
     startTime?: number;
     offSet?: number;
     order?: 'ASC' | 'DESC';
     showDetails?: boolean;
     pageSize?: number;
   }) {
+    this.log.info(
+      `Calling the node ${this.nodeUrl} to get block hashes with params %o`,
+      info,
+    );
     try {
       const result: {
         data: {
           result: {
-            blocks: any[];
+            blockHashes: any[];
             lastTs: number;
             totalPages: number;
           };
         };
-      } = await new RpcUtils(this.nodeUrl, 'RpcService.getBlocksInternal', [
-        info && info.startTime ? info.startTime : this.start_time,
-        info && info.order ? info.order : this.ORDER,
-        info && info.showDetails ? info.showDetails : this.SHOW_DETAILS,
-        info && info.pageSize ? info.pageSize : this.PAGE_SIZE,
-        info && info.offSet ? info.offSet : this.offset,
-      ]).call();
-      if (result && result.data.result.blocks.length > 0) {
+      } = await new RpcUtils(
+        this.nodeUrl,
+        'RpcService.getBlockHashesInternal',
+        [
+          info && info.startTime ? info.startTime : this.start_time,
+          info && info.order ? info.order : this.ORDER,
+          info && info.showDetails ? info.showDetails : this.SHOW_DETAILS,
+          info && info.pageSize ? info.pageSize : this.PAGE_SIZE,
+          info && info.offSet ? info.offSet : this.offset,
+        ],
+      ).call();
+      this.log.info(
+        `Retrieved blockHashes from anode ${this.nodeUrl} with result %o`,
+        result,
+      );
+      if (result && result.data.result.blockHashes.length > 0) {
         // if data is available, update the offset
         this.offset += 1;
         await this.updateAnodeSyncInfo({
@@ -134,7 +168,7 @@ export class ANodeClient {
         });
       }
       return {
-        blocks: result.data.result.blocks,
+        blockHashes: result.data.result.blockHashes,
         lastTs: result.data.result.lastTs,
         totalPages: result.data.result.totalPages,
       };

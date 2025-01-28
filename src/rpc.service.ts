@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { RpcHandler } from '@klerick/nestjs-json-rpc';
 import { BlockService } from './modules/block/block.service';
-import { PaginatedBlockHashResponseInternal, PaginatedBlocksResponse } from './modules/block/dto/paginated.blocks.response.dto';
+import {
+  PaginatedBlockHashResponseInternal,
+  PaginatedBlocksResponse,
+} from './modules/block/dto/paginated.blocks.response.dto';
 import { TxService } from './modules/tx/tx.service';
 import { Logger } from 'winston';
 import { WinstonUtil } from './utilz/winstonUtil';
@@ -69,6 +72,13 @@ export class RpcService {
       finalPageSize,
       finalPage, // Pass the page parameter
     );
+
+    return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
+  }
+
+  async getBlocksByHashesInternal(blockHashes: string[]) {
+    const result =
+      await this.blockService.push_getBlocksByBlockHashesInternal(blockHashes);
 
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
@@ -354,9 +364,19 @@ resp:
     // return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
-  async push_getTransactions(walletInCaip: string, category: string, timestamp: string, sort: string): Promise<object> {
+  async push_getTransactions(
+    walletInCaip: string,
+    category: string,
+    timestamp: string,
+    sort: string,
+  ): Promise<object> {
     try {
-      let result = await this.blockService.push_getTransactions(walletInCaip, category, timestamp, sort);
+      let result = await this.blockService.push_getTransactions(
+        walletInCaip,
+        category,
+        timestamp,
+        sort,
+      );
       return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
     } catch (e) {
       this.log.error(e);
