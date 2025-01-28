@@ -57,6 +57,7 @@ export class ArchieveSync implements OnModuleInit {
         nodeTokens: number,
         nodeApiBaseUrl: string,
       ) => {
+        this.log.info("Found new ANode!! %o", {ownerWallet, nodeType, nodeWallet, nodeApiBaseUrl });
         const ni = new NodeInfo(
           nodeWallet,
           nodeApiBaseUrl,
