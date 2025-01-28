@@ -129,5 +129,43 @@ describe('BlockService', () => {
         service.push_getBlockByHash('nonExistentHash'),
       ).rejects.toThrow('Block not found');
     });
+
+    it("Should return blocks based on blockhash", async()=>{
+      const mockBlock = {
+        block_hash: 'hash1',
+        data: Buffer.from('data1'),
+        data_as_json: {} as Prisma.JsonValue,
+        ts: BigInt(Math.floor(Date.now() / 1000)),
+      };
+      const mockTransactions = [
+        {
+          ts: BigInt(Math.floor(Date.now() / 1000)),
+          txn_hash: 'txnHash1',
+          block_hash: 'hash1',
+          category: 'category1',
+          sender: 'source1',
+          status: 'SUCCESS',
+          from: 'from',
+          recipients: {} as Prisma.JsonValue,
+          data: Buffer.from('data1'),
+          data_as_json: {} as Prisma.JsonValue,
+          sig: 'sig1',
+        },
+      ];
+
+      jest
+        .spyOn(prismaService.block, 'findUnique')
+        .mockResolvedValue(mockBlock);
+      jest
+        .spyOn(prismaService.transaction, 'findMany')
+        .mockResolvedValue(mockTransactions);
+
+      const result = await service.push_getBlockByHash('hash1');
+
+      expect(result).toEqual({
+        ...mockBlock,
+        transactions: mockTransactions,
+      });
+    })
   });
 });
