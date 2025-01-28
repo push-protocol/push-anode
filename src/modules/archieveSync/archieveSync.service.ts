@@ -42,26 +42,51 @@ export class ArchieveSync implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.deleteSyncedRecords()
+    this.deleteSyncedRecords();
+    this.initialiseContractistnerForNewANode()
+  }
+
+  async initialiseContractistnerForNewANode() {
+    this.log.info("Initialising contract listener for new ANode");
+    this.valContractState.contractCli.contract.on(
+      'NodeAdded',
+      async (
+        ownerWallet: string,
+        nodeWallet: string,
+        nodeType: number,
+        nodeTokens: number,
+        nodeApiBaseUrl: string,
+      ) => {
+        const ni = new NodeInfo(
+          nodeWallet,
+          nodeApiBaseUrl,
+          nodeType,
+          NodeStatus.OK,
+        );
+        await ArchieveSync.checkAndStartSyncing(ni);
+      },
+    );
   }
 
   async deleteSyncedRecords() {
-    const self = this
+    const self = this;
     schedule.scheduleJob(
       this.DELETE_SYNCED_RECORDS_SCHEDULE,
       async function () {
         try {
-          self.log.info("Running cron tasks to delete synced records [in every 12 hours]");
+          self.log.info(
+            'Running cron tasks to delete synced records [in every 12 hours]',
+          );
           const records = await self.getAllAnodeSyncInfo();
           const recordsToDelete = records.filter((record) => record.state == 1);
-          self.log.info("Founds records to be deleted %o", recordsToDelete);
+          self.log.info('Founds records to be deleted %o', recordsToDelete);
           await Promise.all(
             recordsToDelete.map(async (record) => {
               await self.deleteAnodeSyncInfo({ id: record.id });
             }),
           );
         } catch (error) {
-          console.log(error)
+          console.log(error);
           self.log.error('Failed to delete synced records', { error });
           throw error;
         }
@@ -72,7 +97,8 @@ export class ArchieveSync implements OnModuleInit {
   public static async checkAndStartSyncing(newNode: NodeInfo) {
     if (
       newNode.nodeType == NodeType.ANode &&
-      newNode.nodeStatus == NodeStatus.OK
+      newNode.nodeStatus == NodeStatus.OK &&
+      newNode.nodeId == this.instance.valContractState.nodeId
     ) {
       void (async () => {
         try {
