@@ -343,9 +343,4 @@ export class ArchieveSync implements OnModuleInit {
       throw error;
     }
   }
-  // function to group the block, from the nodes, form a set and and pass it to handleBlock.
-  // function to check and call the syncing logic.
-  // cron task to delete the records once they are marked as synced.
-  // function to check if the anode needs to sync up with other nodes or not
-  // check if the blocks table has data or not. if not, its a new node and it needs to sync up as there is no resharding or anything
 }
