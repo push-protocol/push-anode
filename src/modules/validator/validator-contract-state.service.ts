@@ -63,6 +63,19 @@ export class ValidatorContractState implements OnModuleInit {
     return this.contractCli.anodes
   }
 
+  public getActiveArchivalNodeExceptSelf(): NodeInfo[] {
+    this.log.info('getActiveArchivalNodeExceptSelf()')
+    this.log.info('this.nodeId: %s', this.nodeId)
+    const allNodes = Array.from(this.getArchivalNodesMap().values())
+    const onlyGoodArchival = allNodes.filter(
+      (ni) =>
+        ni.nodeType == NodeType.ANode &&
+        ValidatorContractState.isEnabled(ni) &&
+        this.nodeId !== ni.nodeId
+    )
+    return onlyGoodArchival
+  }
+
   public getActiveValidatorsExceptSelf(): NodeInfo[] {
     const allNodes = Array.from(this.getAllNodesMap().values())
     const onlyGoodValidators = allNodes.filter(

@@ -6,6 +6,8 @@ import { RpcService } from './rpc.service'; // Import your new RPC service
 import { HealthController } from './modules/health/health.controller';
 import { QueueModule } from './modules/queue/queue.module';
 import { ArchiveModule } from './modules/archive/archive.module';
+import { ValidatorModule } from './modules/validator/validator.module';
+import { ArchieveSyncModule } from './modules/archieveSync/archieve.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { ArchiveModule } from './modules/archive/archive.module';
     TxModule,
     QueueModule,
     ArchiveModule,
+    ValidatorModule,
+    ArchieveSyncModule,
     NestjsJsonRpcModule.forRoot({
       path: 'rpc',
       transport: TransportType.HTTP
