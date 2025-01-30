@@ -22,14 +22,22 @@ export interface SubscriptionResponse {
     timestamp: number;
 }
 
-export interface BlockStoredEvent {
-    type: 'BLOCK_STORED';
-    data: {
-        block_hash: string;
-        data_as_json: any;
-        data: Buffer;
-        ts: number;
-    };
+export interface FilteredTxData {
+    blockHash: string;
+    txHash: string;
+    category: string;
+    from: string;
+    recipients: string[];
+}
+  
+export interface FilterBlockResponse {
+    blockHash: string;
+    txs: FilteredTxData[];
+}
+
+export interface BlockEvent {
+    type: 'BLOCK';
+    data: FilterBlockResponse;
 }
 
 export interface ErrorResponse {
@@ -38,25 +46,32 @@ export interface ErrorResponse {
     timestamp: number;
 }
 
-export interface Block {
-    hash: string;
-    height: number;
-    transactions: any[]; // adjust this type based on your transaction structure
-}
-
 export interface HeartbeatMessage {
     type: 'PING' | 'PONG';
+    timestamp: number;
+}
+
+export interface SubscribeAckResponse {
+    type: 'SUBSCRIBE_ACK';
+    data: {
+        block: FilterBlockResponse | null;
+        subscriptionId: string;
+        matchedFilter: any[];  // adjust this type based on your filter structure
+        success: boolean;
+        error?: string;
+    };
     timestamp: number;
 }
 
 export type WSMessageType = 
     | 'SUBSCRIBE' 
     | 'SUBSCRIPTION_CONFIRMED'
-    | 'BLOCK_STORED'
+    | 'BLOCK'
     | 'ERROR'
     | 'PING'
     | 'PONG'
-    | 'HEARTBEAT';
+    | 'HEARTBEAT'
+    | 'SUBSCRIBE_ACK';
 
 export interface WSMessage {
     type: 'SUBSCRIBE' | 'UNSUBSCRIBE' | 'MESSAGE';

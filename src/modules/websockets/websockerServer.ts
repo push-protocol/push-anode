@@ -2,7 +2,6 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { WinstonUtil } from '../../utilz/winstonUtil';
 import { SubscriptionHandler } from './subscriptionHandler';
 import { ConnectionManager } from './connectionManager';
-import { EventBroadcaster } from './eventBroadcaster';
 import { ErrorHandler } from './errorHandler';
 import { WSMessage } from './types';
 import { Server } from 'http';
@@ -13,24 +12,47 @@ import { ValidatorContractState } from '../validator/validator-contract-state.se
 import { EthUtil } from '../../utilz/ethUtil';
 import { BitUtil } from '../../utilz/bitUtil';
 
+/**
+ * WebSocket server implementation for Archive Node connections.
+ * Handles validator authentication, subscriptions, and real-time event broadcasting.
+ * Implements secure connection handling with nonce-based authentication.
+ */
 @Injectable()
 export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
     private wss: WebSocketServer;
     private readonly log = WinstonUtil.newLog("ArchiveNodeWebSocketServer");
-    private nonceMap: Map<string, string> = new Map(); // Store nonces for pending authentications
+    /** Maps validator addresses to their authentication nonces */
+    private nonceMap: Map<string, string> = new Map();
 
+    /**
+     * Initializes the WebSocket server with required dependencies.
+     * @param subscriptionHandler - Manages validator subscriptions
+     * @param connectionManager - Handles active WebSocket connections
+     * @param errorHandler - Handles WebSocket errors
+     * @param validatorContractState - Validates validator status
+     */
     constructor(
         private readonly subscriptionHandler: SubscriptionHandler,
         private readonly connectionManager: ConnectionManager,
-        private readonly eventBroadcaster: EventBroadcaster,
         private readonly errorHandler: ErrorHandler,
         private readonly validatorContractState: ValidatorContractState
     ) {}
 
+    /**
+     * Generates a cryptographically secure random nonce for authentication.
+     * @returns Hexadecimal string representation of the nonce
+     * @private
+     */
     private generateNonce(): string {
         return randomBytes(32).toString('hex');
     }
 
+    /**
+     * Initializes the WebSocket server with the NestJS application.
+     * Sets up connection handling, authentication, and message processing.
+     * @param app - NestJS application instance
+     * @throws Error if app or HTTP server is not available
+     */
     async initialize(app: INestApplication) {
         if (!app) {
             throw new Error('NestJS application instance is required');
@@ -143,6 +165,13 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
         }
     }
 
+    /**
+     * Handles new authenticated WebSocket connections.
+     * Sets up message handlers and error handling for the connection.
+     * @param ws - WebSocket connection instance
+     * @param validatorAddress - Authenticated validator's address
+     * @private
+     */
     private handleNewConnection(ws: WebSocket, validatorAddress: string) {
         this.log.info(`New connection from validator: ${validatorAddress}`);
         
@@ -177,6 +206,10 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
         });
     }
 
+    /**
+     * Handles graceful shutdown of the WebSocket server.
+     * Closes all active connections and shuts down the server.
+     */
     async onApplicationShutdown() {
         const subscribers = this.subscriptionHandler.getSubscribers();
 
@@ -190,6 +223,13 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
         }
     }
 
+    /**
+     * Processes incoming WebSocket messages.
+     * Handles subscription requests and validates node status.
+     * @param ws - WebSocket connection instance
+     * @param message - Parsed WebSocket message
+     * @private
+     */
     private async handleMessage(ws: WebSocket, message: WSMessage) {
         switch (message.type) {
             case 'SUBSCRIBE':

@@ -1,0 +1,28 @@
+CHAIN_DIR="/Users/apasha/projects/push"
+DOC_DIR="/Users/apasha/projects/push/push-vnode/docker"
+
+  
+    cd ${CHAIN_DIR}/push-anode
+
+    set -o allexport 
+    source ${DOC_DIR}/.env 
+    source ${DOC_DIR}/common.env 
+    source ${DOC_DIR}/a-specific.env 
+    set +o allexport 
+
+    export DB_NAME=anode3
+    export PORT=5003
+    export CONFIG_DIR=${DOC_DIR}/a3
+
+    export LOG_DIR=${CONFIG_DIR}/log
+    export ABI_DIR=${DOC_DIR}/_abi
+    export ETH_KEY_PATH=${CONFIG_DIR}/node_key.json
+    export LOCALH=true 
+    #export SKIP_MIGRATIONS=true    
+    export PG_HOST=localhost
+    export PG_PORT=${EXTERNAL_PG_PORT}
+    export REDIS_URL=redis://localhost:${EXTERNAL_REDIS_PORT}
+    export VALIDATOR_RPC_ENDPOINT=http://localhost:8545
+    echo  > ${LOG_DIR}/debug.log
+    echo  > ${LOG_DIR}/error.log
+    npm run dev10001

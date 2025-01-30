@@ -1,20 +1,35 @@
 import { WinstonUtil } from '../../utilz/winstonUtil';
-import { BlockStoredEvent } from './types';
+import { BlockEvent } from './types';
 import { SubscriptionHandler } from './subscriptionHandler';
 import { Injectable } from '@nestjs/common';
 
+/**
+ * Handles broadcasting of blockchain events to subscribed validator nodes.
+ * Manages the distribution of block events to all valid subscribers while
+ * handling connection errors and maintaining detailed logging.
+ */
 @Injectable()
 export class EventBroadcaster {
     private readonly log = WinstonUtil.newLog('EventBroadcaster');
 
+    /**
+     * Initializes the broadcaster with required dependencies.
+     * @param subscriptionHandler - Manages subscriber information and subscriptions
+     */
     constructor(
         private readonly subscriptionHandler: SubscriptionHandler
     ) {}
 
-    async broadcast(event: BlockStoredEvent) {
+    /**
+     * Broadcasts a block event to all subscribed nodes.
+     * Logs detailed subscriber information and handles transmission errors.
+     * @param event - Block event to broadcast to subscribers
+     * @returns Promise that resolves when broadcasting is complete
+     */
+    async broadcast(event: BlockEvent) {
         const subscribers = this.subscriptionHandler.getSubscribers();
         
-         // Log subscribers
+        // Log detailed subscriber information for debugging
         this.log.debug('Current subscribers:', {
           count: subscribers.size,
           subscribers: Array.from(subscribers).map(([nodeId, info]) => ({
@@ -24,8 +39,9 @@ export class EventBroadcaster {
           }))
         });
 
+        // Broadcast to each subscribed node
         for (const [nodeId, info] of subscribers) {
-            if (info.subscriptions.has('BLOCK_STORED')) {
+            if (info.subscriptions.has('BLOCK')) {
               try {
                 info.ws.send(JSON.stringify(event));
                 this.log.debug(`Event ${event.type} sent to node ${nodeId}`);

@@ -14,7 +14,7 @@ import {
   InputJsonObject,
 } from '@prisma/client/runtime/library';
 import { Tuple } from '../../utilz/tuple';
-import { BlockStoredEvent } from '../websockets/types';
+import { BlockEvent, FilterBlockResponse } from '../websockets/types';
 import { EventBroadcaster } from '../websockets/eventBroadcaster';
 type Transaction = {
   ts?: bigint | number;
@@ -29,6 +29,22 @@ type Transaction = {
   data_as_json: InputJsonValue;
   sig: string;
 };
+
+function filterBlockData(blockHash: string, transactionsDataArray: any[]): FilterBlockResponse {
+  const filteredTxData = transactionsDataArray.map(transactionsData => ({
+        blockHash: transactionsData.block_hash,
+        txHash: transactionsData.txn_hash,
+        category: transactionsData.category,
+        from: transactionsData.from,
+        recipients: transactionsData.recipients.recipients.map((r: { address: string }) => r.address)
+    }));
+
+    return {
+        blockHash,
+        txs: filteredTxData
+    }
+}
+
 @Injectable()
 export class ArchiveNodeService implements Consumer<QItem> {
 
@@ -102,14 +118,13 @@ export class ArchiveNodeService implements Consumer<QItem> {
       // Insert transactions into the database
       await this.prisma.transaction.createMany({ data: transactionsData });
 
-      // Broadcast the BLOCK_STORED event
-      const blockStoredEvent: BlockStoredEvent = {
-        type: 'BLOCK_STORED',
-        data: blockData
+      const filteredBlockData = filterBlockData(blockHash, transactionsData);
+      const blockEvent: BlockEvent = {
+        type: 'BLOCK',
+        data: filteredBlockData
       };
-
-      console.log('Broadcasting block stored event:', blockStoredEvent);
-      await this.eventBroadcaster.broadcast(blockStoredEvent);
+      
+      await this.eventBroadcaster.broadcast(blockEvent);
       
       console.log('Block and transactions inserted:', blockHash);
       return [true, null];

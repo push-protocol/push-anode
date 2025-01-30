@@ -1,34 +1,58 @@
 import { WebSocket } from 'ws';
 import { WinstonUtil } from '../../utilz/winstonUtil';
-import { MetricsService } from './metricsService';
 import { ErrorResponse } from './types';
 import { Injectable } from '@nestjs/common';
 
+/**
+ * Handles WebSocket-related errors and error responses.
+ * Provides centralized error handling for connection, subscription, and message validation issues.
+ */
 @Injectable()
 export class ErrorHandler {
     private readonly log = WinstonUtil.newLog("ErrorHandler");
 
-    constructor(
-        private readonly metrics: MetricsService
-    ) {}
+    constructor() {}
 
+    /**
+     * Handles WebSocket connection-related errors.
+     * Logs the error and sends an error response to the client.
+     * @param ws - WebSocket connection instance
+     * @param error - Error that occurred during connection
+     */
     async handleConnectionError(ws: WebSocket, error: Error) {
         this.log.error('WebSocket connection error:', error);
-        await this.metrics.recordConnectionError(error);
         this.sendError(ws, 'Connection error occurred');
     }
 
+    /**
+     * Handles subscription-related errors for a specific node.
+     * Logs the error with node context and sends an error response.
+     * @param ws - WebSocket connection instance
+     * @param nodeId - Identifier of the node experiencing the error
+     * @param error - Subscription-related error
+     */
     async handleSubscriptionError(ws: WebSocket, nodeId: string, error: Error) {
         this.log.error(`Subscription error for node ${nodeId}:`, error);
-        await this.metrics.recordSubscriptionError(nodeId, error);
         this.sendError(ws, 'Subscription error occurred');
     }
 
+    /**
+     * Handles invalid message errors.
+     * Logs the invalid message and sends an error response to the client.
+     * @param ws - WebSocket connection instance
+     * @param message - Invalid message content or error description
+     */
     handleInvalidMessage(ws: WebSocket, message: string) {
         this.log.warn('Invalid message received:', message);
         this.sendError(ws, message);
     }
 
+    /**
+     * Sends an error response to the client if the connection is open.
+     * @param ws - WebSocket connection instance
+     * @param message - Error message to send to the client
+     * @private
+     */
     private sendError(ws: WebSocket, message: string) {
         if (ws.readyState === WebSocket.OPEN) {
             const errorResponse: ErrorResponse = {
