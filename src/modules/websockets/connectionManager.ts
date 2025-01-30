@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { WinstonUtil } from '../../utilz/winstonUtil';
 import { Injectable } from '@nestjs/common';
 import { SubscriptionHandler } from './subscriptionHandler';
+import { Logger } from 'winston'
 
 /**
  * Manages WebSocket connections and their lifecycle.
@@ -13,7 +14,7 @@ export class ConnectionManager {
     private readonly HEARTBEAT_INTERVAL = 60000;
     /** Maximum time to wait for pong response before considering connection dead (65 seconds) */
     private readonly CONNECTION_TIMEOUT = 65000;
-    private readonly log = WinstonUtil.newLog("ConnectionManager");
+    private readonly log: Logger = WinstonUtil.newLog(ConnectionManager);
     /** Maps validator addresses to their WebSocket connections */
     private connections = new Map<string, WebSocket>();
 
@@ -53,7 +54,7 @@ export class ConnectionManager {
         });
 
         ws.on('error', (error) => {
-            this.log.error(`WebSocket error for node ${nodeId}:`, error);
+            this.log.error('WebSocket connection error: %o', error);
             this.handleDisconnection(nodeId);
         });
     }

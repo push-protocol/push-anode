@@ -11,7 +11,7 @@ import { OnApplicationShutdown } from '@nestjs/common';
 import { ValidatorContractState } from '../validator/validator-contract-state.service';
 import { EthUtil } from '../../utilz/ethUtil';
 import { BitUtil } from '../../utilz/bitUtil';
-
+import IdUtil from '../../utilz/idUtil';
 /**
  * WebSocket server implementation for Archive Node connections.
  * Handles validator authentication, subscriptions, and real-time event broadcasting.
@@ -20,7 +20,7 @@ import { BitUtil } from '../../utilz/bitUtil';
 @Injectable()
 export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
     private wss: WebSocketServer;
-    private readonly log = WinstonUtil.newLog("ArchiveNodeWebSocketServer");
+    private readonly log = WinstonUtil.newLog(ArchiveNodeWebSocketServer);
     /** Maps validator addresses to their authentication nonces */
     private nonceMap: Map<string, string> = new Map();
 
@@ -37,15 +37,6 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
         private readonly errorHandler: ErrorHandler,
         private readonly validatorContractState: ValidatorContractState
     ) {}
-
-    /**
-     * Generates a cryptographically secure random nonce for authentication.
-     * @returns Hexadecimal string representation of the nonce
-     * @private
-     */
-    private generateNonce(): string {
-        return randomBytes(32).toString('hex');
-    }
 
     /**
      * Initializes the WebSocket server with the NestJS application.
@@ -85,7 +76,7 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
                 }, 30000); // 30 seconds timeout
 
                 // Generate and send nonce immediately
-                const nonce = this.generateNonce();
+                const nonce = IdUtil.generateNonce();
                 this.nonceMap.set(validatorAddress, nonce);
                 this.log.info(`Sending auth challenge to ${validatorAddress}: ${nonce}`);
                 ws.send(JSON.stringify({ type: 'AUTH_CHALLENGE', nonce }));
@@ -160,7 +151,7 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
             this.log.info(`WebSocket Server listening on port: ${port}`);
 
         } catch (error) {
-            this.log.error('Failed to initialize WebSocket server:', error);
+            this.log.error('Failed to initialize WebSocket server: %o', error);
             throw error;
         }
     }
@@ -196,7 +187,7 @@ export class ArchiveNodeWebSocketServer implements OnApplicationShutdown {
         });
 
         ws.on('error', (error) => {
-            this.log.error(`WebSocket error for ${validatorAddress}:`, error);
+            this.log.error(`WebSocket error for ${validatorAddress}: %o`, error);
             this.errorHandler.handleConnectionError(ws, error);
         });
 

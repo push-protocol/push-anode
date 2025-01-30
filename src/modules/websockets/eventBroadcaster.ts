@@ -2,6 +2,7 @@ import { WinstonUtil } from '../../utilz/winstonUtil';
 import { BlockEvent } from './types';
 import { SubscriptionHandler } from './subscriptionHandler';
 import { Injectable } from '@nestjs/common';
+import { Logger } from 'winston'
 
 /**
  * Handles broadcasting of blockchain events to subscribed validator nodes.
@@ -10,7 +11,7 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class EventBroadcaster {
-    private readonly log = WinstonUtil.newLog('EventBroadcaster');
+    private readonly log = WinstonUtil.newLog(EventBroadcaster);
 
     /**
      * Initializes the broadcaster with required dependencies.
@@ -30,7 +31,7 @@ export class EventBroadcaster {
         const subscribers = this.subscriptionHandler.getSubscribers();
         
         // Log detailed subscriber information for debugging
-        this.log.debug('Current subscribers:', {
+        this.log.debug(`Current subscribers: %o`, {
           count: subscribers.size,
           subscribers: Array.from(subscribers).map(([nodeId, info]) => ({
               nodeId,
@@ -46,7 +47,7 @@ export class EventBroadcaster {
                 info.ws.send(JSON.stringify(event));
                 this.log.debug(`Event ${event.type} sent to node ${nodeId}`);
               } catch (error) {
-                this.log.error(`Failed to send event to node ${nodeId}:`, error);
+                this.log.error(`Failed to send event to node ${nodeId}: %o`, error);
               }
             }
         }

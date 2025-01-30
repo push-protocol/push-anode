@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { WinstonUtil } from '../../utilz/winstonUtil';
 import { ErrorResponse } from './types';
 import { Injectable } from '@nestjs/common';
+import { Logger } from 'winston'
 
 /**
  * Handles WebSocket-related errors and error responses.
@@ -9,7 +10,7 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class ErrorHandler {
-    private readonly log = WinstonUtil.newLog("ErrorHandler");
+    private readonly log: Logger = WinstonUtil.newLog(ErrorHandler);
 
     constructor() {}
 
@@ -20,7 +21,7 @@ export class ErrorHandler {
      * @param error - Error that occurred during connection
      */
     async handleConnectionError(ws: WebSocket, error: Error) {
-        this.log.error('WebSocket connection error:', error);
+        this.log.error('WebSocket connection error: %o', error);
         this.sendError(ws, 'Connection error occurred');
     }
 
@@ -32,7 +33,7 @@ export class ErrorHandler {
      * @param error - Subscription-related error
      */
     async handleSubscriptionError(ws: WebSocket, nodeId: string, error: Error) {
-        this.log.error(`Subscription error for node ${nodeId}:`, error);
+        this.log.error(`Subscription error for node ${nodeId}: %o`, error);
         this.sendError(ws, 'Subscription error occurred');
     }
 
@@ -43,7 +44,7 @@ export class ErrorHandler {
      * @param message - Invalid message content or error description
      */
     handleInvalidMessage(ws: WebSocket, message: string) {
-        this.log.warn('Invalid message received:', message);
+        this.log.warn(`Invalid message received: %o`, message);
         this.sendError(ws, message);
     }
 
