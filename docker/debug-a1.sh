@@ -23,6 +23,9 @@ DOC_DIR="/Users/apasha/projects/push/push-vnode/docker"
     export PG_PORT=${EXTERNAL_PG_PORT}
     export REDIS_URL=redis://localhost:${EXTERNAL_REDIS_PORT}
     export VALIDATOR_RPC_ENDPOINT=http://localhost:8545
+    export DATABASE_URL="postgres://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${DB_NAME}"
+
     echo  > ${LOG_DIR}/debug.log
     echo  > ${LOG_DIR}/error.log
-    npm run dev10001
+    echo "db is ${DATABASE_URL}"
+    npm run start:dev
