@@ -14,7 +14,8 @@ import {
   InputJsonObject,
 } from '@prisma/client/runtime/library';
 import { Tuple } from '../../utilz/tuple';
-
+import { BlockEvent, FilterBlockResponse } from '../websockets/types';
+import { EventBroadcaster } from '../websockets/eventBroadcaster';
 type Transaction = {
   ts?: bigint | number;
   txn_hash: string;
@@ -28,12 +29,30 @@ type Transaction = {
   data_as_json: InputJsonValue;
   sig: string;
 };
+
+function filterBlockData(blockHash: string, transactionsDataArray: any[]): FilterBlockResponse {
+  const filteredTxData = transactionsDataArray.map(transactionsData => ({
+        blockHash: transactionsData.block_hash,
+        txHash: transactionsData.txn_hash,
+        category: transactionsData.category,
+        from: transactionsData.from,
+        recipients: transactionsData.recipients.recipients.map((r: { address: string }) => r.address)
+    }));
+
+    return {
+        blockHash,
+        txs: filteredTxData
+    }
+}
+
 @Injectable()
 export class ArchiveNodeService implements Consumer<QItem> {
 
-  constructor(private prisma: PrismaService,
-              private valContractState: ValidatorContractState) {
-  }
+  constructor(
+    private prisma: PrismaService,
+    private valContractState: ValidatorContractState,
+    private eventBroadcaster: EventBroadcaster
+  ) {}
 
   public async accept(item: QItem): Promise<boolean> {
     try {
@@ -99,6 +118,14 @@ export class ArchiveNodeService implements Consumer<QItem> {
       // Insert transactions into the database
       await this.prisma.transaction.createMany({ data: transactionsData });
 
+      const filteredBlockData = filterBlockData(blockHash, transactionsData);
+      const blockEvent: BlockEvent = {
+        type: 'BLOCK',
+        data: filteredBlockData
+      };
+      
+      await this.eventBroadcaster.broadcast(blockEvent);
+      
       console.log('Block and transactions inserted:', blockHash);
       return [true, null];
     } catch (error) {
