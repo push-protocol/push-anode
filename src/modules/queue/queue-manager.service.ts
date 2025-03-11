@@ -48,7 +48,7 @@ export class QueueManagerService implements OnModuleInit {
       [QueueManagerService.QUEUE_MBLOCK],
     );
 
-    // this.scheduleQueuePolling();
+    this.scheduleQueuePolling();
   }
 
   /**
