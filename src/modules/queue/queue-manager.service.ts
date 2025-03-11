@@ -25,10 +25,10 @@ export class QueueManagerService implements OnModuleInit {
 
   private readonly CLIENT_READ_SCHEDULE = EnvLoader.getPropertyOrDefault(
     'CLIENT_READ_SCHEDULE',
-    '*/60 * * * * *',
+    '*/10 * * * * *',
   );
 
-  private readonly CLIENT_REQUEST_PER_SCHEDULED_JOB = 1;
+  private readonly CLIENT_REQUEST_PER_SCHEDULED_JOB = 10;
 
   public static QUEUE_MBLOCK = 'mblock';
 
@@ -48,7 +48,7 @@ export class QueueManagerService implements OnModuleInit {
       [QueueManagerService.QUEUE_MBLOCK],
     );
 
-    this.scheduleQueuePolling();
+    // this.scheduleQueuePolling();
   }
 
   /**
