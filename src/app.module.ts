@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { NestjsJsonRpcModule, TransportType } from '@klerick/nestjs-json-rpc';
 import { BlockModule } from './modules/block/block.module';
 import { TxModule } from './modules/tx/tx.module';
@@ -10,6 +10,7 @@ import { ValidatorModule } from './modules/validator/validator.module';
 import { ArchieveSyncModule } from './modules/archieveSync/archieve.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { IpLoggerMiddleware } from './middleware/ip-logger.middleware';
 
 @Module({
   imports: [
@@ -39,4 +40,8 @@ import { APP_GUARD } from '@nestjs/core';
   ],
   controllers: [HealthController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(IpLoggerMiddleware).forRoutes('*');
+  }
+}
