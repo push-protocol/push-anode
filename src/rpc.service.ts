@@ -8,6 +8,7 @@ import {
 import { TxService } from './modules/tx/tx.service';
 import { Logger } from 'winston';
 import { WinstonUtil } from './utilz/winstonUtil';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @RpcHandler()
 @Injectable()
@@ -52,6 +53,7 @@ export class RpcService {
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
+  @SkipThrottle()
   async getBlockHashesInternal(
     startTime?: number,
     direction?: string,
@@ -76,6 +78,7 @@ export class RpcService {
     return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
+  @SkipThrottle()
   async getBlocksByHashesInternal(blockHashes: string[]) {
     const result =
       await this.blockService.push_getBlocksByBlockHashesInternal(blockHashes);
@@ -319,6 +322,7 @@ resp:
  }
  
  */
+  @SkipThrottle()
   async push_putBlockHash(...hashes: string[]) {
     console.log('hashes:', hashes);
     if (!Array.isArray(hashes)) {
@@ -353,6 +357,7 @@ resp:
 }
    */
 
+  @SkipThrottle()
   async push_putBlock(...blocks: string[]) {
     if (!Array.isArray(blocks)) {
       throw new Error(
@@ -364,6 +369,7 @@ resp:
     // return JSON.parse(JSON.stringify(result, this.bigIntReplacer));
   }
 
+  @SkipThrottle()
   async push_getTransactions(
     walletInCaip: string,
     category: string,
