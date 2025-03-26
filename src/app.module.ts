@@ -23,7 +23,7 @@ import { IpLoggerMiddleware } from './middleware/ip-logger.middleware';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 sec
-        limit: 200, // 200 requests per minute
+        limit: 30, // 30 requests per minute
       },
     ]),
     NestjsJsonRpcModule.forRoot({
@@ -40,8 +40,9 @@ import { IpLoggerMiddleware } from './middleware/ip-logger.middleware';
   ],
   controllers: [HealthController],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(IpLoggerMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}
+// export class AppModule implements NestModule {
+//   configure(consumer: MiddlewareConsumer) {
+//     consumer.apply(IpLoggerMiddleware).forRoutes('*');
+//   }
+// }
