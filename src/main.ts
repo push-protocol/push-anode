@@ -9,13 +9,14 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { StrUtil } from './utilz/strUtil';
 import { json } from 'body-parser';
 import { ArchiveNodeWebSocketServer } from './modules/websockets/websockerServer';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 function fixDatabaseUrl() {
   if (StrUtil.isEmpty(process.env.DATABASE_URL)) {
     let PG_USER = EnvLoader.getPropertyOrFail('PG_USER');
     let PG_PASS = EnvLoader.getPropertyOrFail('PG_PASS');
     let PG_HOST = EnvLoader.getPropertyOrFail('PG_HOST');
-    let PG_PORT = EnvLoader.getPropertyOrDefault('PG_PORT', "5432");
+    let PG_PORT = EnvLoader.getPropertyOrDefault('PG_PORT', '5432');
     let DB_NAME = EnvLoader.getPropertyOrFail('DB_NAME');
     process.env.DATABASE_URL = `postgres://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${DB_NAME}`;
   }
@@ -23,10 +24,13 @@ function fixDatabaseUrl() {
 
 async function bootstrap() {
   fixDatabaseUrl();
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: new WinstonLoggerService(),
   });
-  const MAX_HTTP_PAYLOAD = EnvLoader.getPropertyOrDefault('MAX_HTTP_PAYLOAD', '20mb');
+  const MAX_HTTP_PAYLOAD = EnvLoader.getPropertyOrDefault(
+    'MAX_HTTP_PAYLOAD',
+    '20mb',
+  );
   app.use(json({ limit: MAX_HTTP_PAYLOAD }));
 
   app.enableCors({
@@ -34,6 +38,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept',
   });
+  app.set('trust proxy', true);
 
   const config = new DocumentBuilder()
     .setTitle('Push-Anode API')
@@ -42,16 +47,14 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-  let PORT = EnvLoader.getPropertyAsNumber("PORT", 3000);
+  let PORT = EnvLoader.getPropertyAsNumber('PORT', 3000);
   const server = await app.listen(PORT);
 
   // Initialize WebSocket server with the HTTP server
   const wsServer = app.get(ArchiveNodeWebSocketServer);
   await wsServer.initialize(app);
-  
 
-  let artwork =
-    `    
+  let artwork = `    
  ____            _          _             _     _            _ 
 |  _ \\ _   _ ___| |__      / \\   _ __ ___| |__ (_)_   ____ _| |
 | |_) | | | / __| '_ \\    / _ \\ | '__/ __| '_ \\| \\ \\ / / _\` | |
@@ -69,7 +72,5 @@ async function bootstrap() {
       🛡️  Server listening on port: ${PORT} 🛡️
       ################################################
     `);
-
-
 }
 bootstrap();
