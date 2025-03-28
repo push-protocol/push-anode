@@ -23,7 +23,7 @@ import { IpLoggerMiddleware } from './middleware/ip-logger.middleware';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 sec
-        limit: 30, // 30 requests per minute
+        limit: 60, // 60 requests per minute
       },
     ]),
     NestjsJsonRpcModule.forRoot({
