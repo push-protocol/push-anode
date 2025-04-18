@@ -14,6 +14,7 @@ model Block {
   ts           BigInt @default(0) @map("ts") // Changed to BigInt
 
   @@index([block_hash], name: "blocks_idx")
+  @@index([ts], name: "block_ts_idx")
 }
 
 model Transaction {
@@ -32,6 +33,8 @@ model Transaction {
   @@id([txn_hash])
   @@index([block_hash], name: "transaction_block_hash_idx")
   @@index([recipients(ops: JsonbPathOps)], type: Gin)
+  @@index([ts], name: "transaction_ts_idx")
+  @@index([category], name: "transaction_category_idx")
 }
 
 model dsetClient {
