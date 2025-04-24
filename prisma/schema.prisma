@@ -35,6 +35,7 @@ model Transaction {
   @@index([recipients(ops: JsonbPathOps)], type: Gin)
   @@index([ts], name: "transaction_ts_idx")
   @@index([category], name: "transaction_category_idx")
+  @@index([sender], name: "transaction_sender_idx")
 }
 
 model dsetClient {
